@@ -83,7 +83,7 @@ export const authOptions: NextAuthOptions = {
     signIn: '/login',
     error: '/login'
   },
-  session: { strategy: 'jwt' }
+  session: { strategy: 'jwt' },
   secret: process.env.NEXTAUTH_SECRET,
   trustHost: true
 

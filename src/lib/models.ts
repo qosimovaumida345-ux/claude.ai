@@ -4,9 +4,9 @@ export const MODELS: AIModel[] = [
   {
     id: 'claude-fan-made-haiku',
     name: 'Claude Fan-Made Haiku',
-    description: 'Ultra fast — everyday tasks',
+    description: 'Fast — lightweight coding/chat',
     provider: 'groq',
-    realModel: 'llama-3.3-70b-versatile',
+    realModel: 'llama3-8b-8192',
     isFast: true,
     contextWindow: 131072,
     category: 'haiku'
@@ -15,33 +15,33 @@ export const MODELS: AIModel[] = [
     id: 'claude-fan-made-4.6',
     name: 'Claude Fan-Made 4.6',
     description: 'Balanced — code + chat',
-    provider: 'google',
-    realModel: 'gemini-2.0-flash',
-    contextWindow: 1048576,
+    provider: 'groq',
+    realModel: 'llama-3.3-70b-versatile',
+    contextWindow: 131072,
     category: 'sonnet'
   },
   {
     id: 'claude-fan-made-4.7',
     name: 'Claude Fan-Made 4.7',
-    description: 'Smart — complex code',
-    provider: 'google',
-    realModel: 'gemini-2.5-flash-preview-04-17',
-    contextWindow: 1048576,
+    description: 'Strong — complex code',
+    provider: 'groq',
+    realModel: 'llama-3.3-70b-versatile',
+    contextWindow: 131072,
     category: 'sonnet'
   },
   {
     id: 'claude-fan-made-4.6-opus',
     name: 'Claude Fan-Made 4.6 Opus',
-    description: 'Powerful — deep coding',
-    provider: 'google',
-    realModel: 'gemini-2.5-pro-preview-03-25',
-    contextWindow: 1048576,
+    description: 'Best coding quality (without Google)',
+    provider: 'groq',
+    realModel: 'llama-3.3-70b-versatile',
+    contextWindow: 131072,
     category: 'opus'
   },
   {
     id: 'claude-fan-made-4.6-opus-thinking',
     name: 'Claude Fan-Made 4.6 Opus (Thinking)',
-    description: 'Deep reasoning — hardest tasks',
+    description: 'Deep reasoning mode',
     provider: 'groq',
     realModel: 'deepseek-r1-distill-llama-70b',
     isThinking: true,
@@ -58,10 +58,10 @@ export function getModelById(id: string): AIModel | undefined {
 
 export function getRealModel(fanMadeId: string): string {
   const model = getModelById(fanMadeId)
-  return model?.realModel ?? 'gemini-2.0-flash'
+  return model?.realModel ?? MODELS[1].realModel
 }
 
 export function getModelProvider(fanMadeId: string): string {
   const model = getModelById(fanMadeId)
-  return model?.provider ?? 'google'
+  return model?.provider ?? 'groq'
 }

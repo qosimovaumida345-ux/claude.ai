@@ -97,20 +97,11 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60 // 30 kun
-  },
-  cookies: {
-    sessionToken: {
-      name: `next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production' // Render da true bo'ladi
-      }
-    }
+    maxAge: 30 * 24 * 60 * 60
   },
   secret: process.env.NEXTAUTH_SECRET,
+  // trustHost type xatosini shu yo'l bilan hal qilamiz
+  ...({ trustHost: true } as object)
 }
 
 const handler = NextAuth(authOptions)

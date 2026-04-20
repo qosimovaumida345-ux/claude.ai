@@ -40,8 +40,9 @@ export const authOptions: NextAuthOptions = {
         return {
           id: user.id,
           email: user.email,
-          name: user.name,
-          image: user.avatar
+          // bu ustunlar bo'lmasa ham undefined bo'lib qoladi, xato emas
+          name: (user as any).name ?? null,
+          image: (user as any).avatar ?? null
         }
       }
     })
@@ -49,45 +50,54 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async signIn({ user, account }) {
-      // OAuth orqali user yaratilgan bo‘lishi kerak
-      if (account?.provider === 'google' || account?.provider === 'github') {
-        if (!user.email) return false
+      try {
+        if (account?.provider === 'google' || account?.provider === 'github') {
+          if (!user.email) return false
 
-        const db = createServiceClient()
-        const { data: existing } = await db
-          .from('users')
-          .select('id')
-          .eq('email', user.email)
-          .single()
+          const db = createServiceClient()
 
-        if (!existing) {
-          await db.from('users').insert({
-            email: user.email,
-            name: user.name ?? null,
-            avatar: user.image ?? null,
-            provider: account.provider
-          })
+          const { data: existing } = await db
+            .from('users')
+            .select('id')
+            .eq('email', user.email)
+            .single()
+
+          // users yo'q bo'lsa, faqat email bilan insert (name/avatar/plan kabi ustunlardan qat'iy nazar)
+          if (!existing) {
+            await db.from('users').insert({
+              email: user.email,
+            })
+          }
         }
+
+        return true
+      } catch (e) {
+        console.error('signIn error:', e)
+        return false
       }
-      return true
     },
 
     async jwt({ token, user }) {
-      // Har so‘rovda token.userId bo‘lmasa, email bo‘yicha DB dan topamiz
-      // (shunda /api/auth/session ichida user.id chiqadi)
+      // Credentials login: authorize dan user.id keladi
+      if (user && (user as any).id) {
+        token.userId = (user as any).id
+      }
+
       const email = token.email ?? user?.email
 
+      // OAuth bo'lsa yoki token.userId yo'q bo'lsa: email -> users.id
       if (!token.userId && email) {
-        const db = createServiceClient()
-        const { data } = await db
-          .from('users')
-          .select('id, plan')
-          .eq('email', email)
-          .single()
+        try {
+          const db = createServiceClient()
+          const { data } = await db
+            .from('users')
+            .select('id')
+            .eq('email', email)
+            .single()
 
-        if (data) {
-          token.userId = data.id
-          token.plan = data.plan
+          if (data?.id) token.userId = data.id
+        } catch (e) {
+          console.error('jwt userId lookup error:', e)
         }
       }
 
@@ -95,14 +105,12 @@ export const authOptions: NextAuthOptions = {
     },
 
     async session({ session, token }) {
-      return {
-        ...session,
-        user: {
-          ...(session.user ?? {}),
-          id: token.userId as string | undefined,
-          plan: token.plan as string | undefined
-        }
-      }
+      session.user = session.user ?? ({} as any)
+
+      session.user.id = token.userId as string | undefined
+      session.user.plan = token.plan as string | undefined
+
+      return session
     }
   },
 
@@ -118,7 +126,7 @@ export const authOptions: NextAuthOptions = {
 
   secret: process.env.NEXTAUTH_SECRET,
 
-  // trustHost type error uchun
+  // nextauth type/xavfsizlik uchun (Render’da ishlayapti)
   ...({ trustHost: true } as object)
 }
 

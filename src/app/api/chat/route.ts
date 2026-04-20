@@ -8,17 +8,18 @@ async function getUserId() {
   const session = await getServerSession(authOptions)
   const db = createServiceClient()
 
-  let userId = session?.user?.id
-  if (!userId && session?.user?.email) {
-    const { data } = await db
-      .from('users')
-      .select('id')
-      .eq('email', session.user.email)
-      .single()
+  if (session?.user?.id) return session.user.id as string
 
-    userId = data?.id
-  }
-  return userId
+  const email = session?.user?.email
+  if (!email) return null
+
+  const { data } = await db
+    .from('users')
+    .select('id')
+    .eq('email', email)
+    .single()
+
+  return data?.id as string | null
 }
 
 export async function POST(req: NextRequest) {
@@ -74,10 +75,7 @@ export async function POST(req: NextRequest) {
 
     if (!upstreamRes.ok) {
       const errText = await upstreamRes.text()
-      return NextResponse.json(
-        { error: `Model error: ${errText}` },
-        { status: upstreamRes.status }
-      )
+      return NextResponse.json({ error: `Model error: ${errText}` }, { status: upstreamRes.status })
     }
 
     let fullContent = ''
@@ -96,9 +94,7 @@ export async function POST(req: NextRequest) {
               fullContent += delta
               controller.enqueue(new TextEncoder().encode(delta))
             }
-          } catch {
-            // ignore
-          }
+          } catch {}
         }
       },
       async flush() {
@@ -110,6 +106,7 @@ export async function POST(req: NextRequest) {
               content: fullContent,
               model
             })
+
             await db
               .from('chat_sessions')
               .update({ updated_at: new Date().toISOString() })

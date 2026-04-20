@@ -3,27 +3,35 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { createServiceClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
-async function getUserIdOr404() {
+async function getUserIdFromSession() {
   const session = await getServerSession(authOptions)
+
   const db = createServiceClient()
 
-  let userId = session?.user?.id
-  if (!userId && session?.user?.email) {
-    const { data } = await db
-      .from('users')
-      .select('id')
-      .eq('email', session.user.email)
-      .single()
+  // 1) eng tez: id bo'lsa
+  if (session?.user?.id) return session.user.id as string
 
-    userId = data?.id
+  // 2) id yo'q bo'lsa: email bo'yicha topamiz
+  const email = session?.user?.email
+  if (!email) return null
+
+  const { data, error } = await db
+    .from('users')
+    .select('id')
+    .eq('email', email)
+    .single()
+
+  if (error) {
+    console.error('getUserIdFromSession error:', error)
+    return null
   }
 
-  return userId
+  return data?.id as string | null
 }
 
 export async function GET() {
   try {
-    const userId = await getUserIdOr404()
+    const userId = await getUserIdFromSession()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const db = createServiceClient()
@@ -43,7 +51,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const userId = await getUserIdOr404()
+    const userId = await getUserIdFromSession()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json()
@@ -68,9 +76,10 @@ export async function POST(req: NextRequest) {
   }
 }
 
+// PATCH/DELETE ham xuddi shunday userId fallback bilan
 export async function PATCH(req: NextRequest) {
   try {
-    const userId = await getUserIdOr404()
+    const userId = await getUserIdFromSession()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json()
@@ -102,7 +111,7 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const userId = await getUserIdOr404()
+    const userId = await getUserIdFromSession()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { searchParams } = new URL(req.url)

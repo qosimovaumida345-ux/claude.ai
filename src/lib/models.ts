@@ -4,7 +4,7 @@ export const MODELS: AIModel[] = [
   {
     id: 'claude-fan-made-haiku',
     name: 'Claude Fan-Made Haiku',
-    description: 'Fast coding/chat (Cerebras)',
+    description: 'Llama 3.1 8B (Fastest)',
     provider: 'cerebras',
     realModel: 'llama3.1-8b',
     isFast: true,
@@ -14,36 +14,36 @@ export const MODELS: AIModel[] = [
   {
     id: 'claude-fan-made-4.6',
     name: 'Claude Fan-Made 4.6',
-    description: 'Balanced coding/chat (Cerebras)',
+    description: 'GPT OSS 120B (Balanced)',
     provider: 'cerebras',
-    realModel: 'llama-3.3-70b',
+    realModel: 'gpt-oss-120b',
     contextWindow: 131072,
     category: 'sonnet'
   },
   {
     id: 'claude-fan-made-4.7',
     name: 'Claude Fan-Made 4.7',
-    description: 'Stronger coding/chat (Cerebras)',
+    description: 'Qwen 3 235B (High Quality)',
     provider: 'cerebras',
-    realModel: 'llama-3.3-70b',
+    realModel: 'qwen-3-235b-a22b-instruct-2507',
     contextWindow: 131072,
     category: 'sonnet'
   },
   {
     id: 'claude-fan-made-4.6-opus',
     name: 'Claude Fan-Made 4.6 Opus',
-    description: 'Best coding (Cerebras)',
+    description: 'Qwen 3 235B (Best for Coding)',
     provider: 'cerebras',
-    realModel: 'llama-4-scout-17b-16e-instruct',
+    realModel: 'qwen-3-235b-a22b-instruct-2507',
     contextWindow: 131072,
     category: 'opus'
   },
   {
     id: 'claude-fan-made-4.6-opus-thinking',
     name: 'Claude Fan-Made 4.6 Opus (Thinking)',
-    description: 'Deep reasoning mode (Cerebras)',
+    description: 'Qwen 3 235B (Deep Reasoning)',
     provider: 'cerebras',
-    realModel: 'llama-4-scout-17b-16e-instruct',
+    realModel: 'qwen-3-235b-a22b-instruct-2507',
     isThinking: true,
     contextWindow: 131072,
     category: 'thinking'

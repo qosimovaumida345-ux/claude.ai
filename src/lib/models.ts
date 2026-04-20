@@ -6,7 +6,7 @@ export const MODELS: AIModel[] = [
     name: 'Claude Fan-Made Haiku',
     description: 'Fast and efficient for everyday tasks',
     provider: 'openrouter',
-    realModel: 'meta-llama/llama-3.1-8b-instruct:free',
+    realModel: 'meta-llama/llama-3.1-8b-instruct',
     isFast: true,
     contextWindow: 131072,
     category: 'haiku'
@@ -16,7 +16,7 @@ export const MODELS: AIModel[] = [
     name: 'Claude Fan-Made 4.6',
     description: 'Balanced intelligence and speed',
     provider: 'openrouter',
-    realModel: 'meta-llama/llama-3.3-70b-instruct:free',
+    realModel: 'meta-llama/llama-3.3-70b-instruct',
     contextWindow: 131072,
     category: 'sonnet'
   },
@@ -25,7 +25,7 @@ export const MODELS: AIModel[] = [
     name: 'Claude Fan-Made 4.7',
     description: 'Latest generation with improved reasoning',
     provider: 'openrouter',
-    realModel: 'google/gemini-2.0-flash-exp:free',
+    realModel: 'google/gemini-2.0-flash-exp',
     contextWindow: 1048576,
     category: 'sonnet'
   },
@@ -34,7 +34,7 @@ export const MODELS: AIModel[] = [
     name: 'Claude Fan-Made 4.6 Opus',
     description: 'Maximum intelligence for complex tasks',
     provider: 'openrouter',
-    realModel: 'deepseek/deepseek-chat-v3-0324:free',
+    realModel: 'deepseek/deepseek-chat-v3-0324',
     contextWindow: 163840,
     category: 'opus'
   },
@@ -43,7 +43,7 @@ export const MODELS: AIModel[] = [
     name: 'Claude Fan-Made 4.6 Opus (Thinking)',
     description: 'Deep reasoning with extended thinking',
     provider: 'openrouter',
-    realModel: 'deepseek/deepseek-r1:free',
+    realModel: 'deepseek/deepseek-r1',
     isThinking: true,
     contextWindow: 163840,
     category: 'thinking'

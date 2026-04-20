@@ -38,9 +38,10 @@ export const authOptions: NextAuthOptions = {
         if (!valid) return null
 
         return {
+          // next-auth token uchun id/other maydonlar keladi,
+          // lekin biz token.userId ni baribir email orqali DB dan topamiz.
           id: user.id,
           email: user.email,
-          // bu ustunlar bo'lmasa ham undefined bo'lib qoladi, xato emas
           name: (user as any).name ?? null,
           image: (user as any).avatar ?? null
         }
@@ -51,8 +52,9 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ user, account }) {
       try {
+        // OAuth (Google/GitHub) bo'lsa users row yo'qmi tekshiramiz
         if (account?.provider === 'google' || account?.provider === 'github') {
-          if (!user.email) return false
+          if (!user?.email) return false
 
           const db = createServiceClient()
 
@@ -62,8 +64,8 @@ export const authOptions: NextAuthOptions = {
             .eq('email', user.email)
             .single()
 
-          // users yo'q bo'lsa, faqat email bilan insert (name/avatar/plan kabi ustunlardan qat'iy nazar)
           if (!existing) {
+            // faqat email insert qilamiz (name/avatar/plan ixtiyoriy)
             await db.from('users').insert({
               email: user.email,
             })
@@ -78,27 +80,23 @@ export const authOptions: NextAuthOptions = {
     },
 
     async jwt({ token, user }) {
-      // Credentials login: authorize dan user.id keladi
-      if (user && (user as any).id) {
-        token.userId = (user as any).id
-      }
-
+      // email — har so'rovda bor bo'lishi kerak (sizda /api/auth/session 200 da email ko'rinayapti)
       const email = token.email ?? user?.email
 
-      // OAuth bo'lsa yoki token.userId yo'q bo'lsa: email -> users.id
-      if (!token.userId && email) {
-        try {
-          const db = createServiceClient()
-          const { data } = await db
-            .from('users')
-            .select('id')
-            .eq('email', email)
-            .single()
+      if (!email) return token
 
-          if (data?.id) token.userId = data.id
-        } catch (e) {
-          console.error('jwt userId lookup error:', e)
-        }
+      // HAR DOIM DB'dan users.id (UUID) ni email bo'yicha olamiz.
+      // Bu provider.id (228171679 kabi son) tushib qolishining oldini oladi.
+      const db = createServiceClient()
+      const { data } = await db
+        .from('users')
+        .select('id, plan')
+        .eq('email', email)
+        .single()
+
+      if (data?.id) {
+        token.userId = data.id
+        token.plan = data.plan
       }
 
       return token
@@ -126,7 +124,6 @@ export const authOptions: NextAuthOptions = {
 
   secret: process.env.NEXTAUTH_SECRET,
 
-  // nextauth type/xavfsizlik uchun (Render’da ishlayapti)
   ...({ trustHost: true } as object)
 }
 

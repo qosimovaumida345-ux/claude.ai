@@ -4,9 +4,9 @@ export const MODELS: AIModel[] = [
   {
     id: 'claude-fan-made-haiku',
     name: 'Claude Fan-Made Haiku',
-    description: 'Fast and efficient for everyday tasks',
-    provider: 'openrouter',
-    realModel: 'meta-llama/llama-3.1-8b-instruct',
+    description: 'Ultra fast — everyday tasks',
+    provider: 'groq',
+    realModel: 'llama-3.3-70b-versatile',
     isFast: true,
     contextWindow: 131072,
     category: 'haiku'
@@ -14,38 +14,38 @@ export const MODELS: AIModel[] = [
   {
     id: 'claude-fan-made-4.6',
     name: 'Claude Fan-Made 4.6',
-    description: 'Balanced intelligence and speed',
-    provider: 'openrouter',
-    realModel: 'meta-llama/llama-3.3-70b-instruct',
-    contextWindow: 131072,
+    description: 'Balanced — code + chat',
+    provider: 'google',
+    realModel: 'gemini-2.0-flash',
+    contextWindow: 1048576,
     category: 'sonnet'
   },
   {
     id: 'claude-fan-made-4.7',
     name: 'Claude Fan-Made 4.7',
-    description: 'Latest generation with improved reasoning',
-    provider: 'openrouter',
-    realModel: 'google/gemini-2.0-flash-exp',
+    description: 'Smart — complex code',
+    provider: 'google',
+    realModel: 'gemini-2.5-flash-preview-04-17',
     contextWindow: 1048576,
     category: 'sonnet'
   },
   {
     id: 'claude-fan-made-4.6-opus',
     name: 'Claude Fan-Made 4.6 Opus',
-    description: 'Maximum intelligence for complex tasks',
-    provider: 'openrouter',
-    realModel: 'deepseek/deepseek-chat-v3-0324',
-    contextWindow: 163840,
+    description: 'Powerful — deep coding',
+    provider: 'google',
+    realModel: 'gemini-2.5-pro-preview-03-25',
+    contextWindow: 1048576,
     category: 'opus'
   },
   {
     id: 'claude-fan-made-4.6-opus-thinking',
     name: 'Claude Fan-Made 4.6 Opus (Thinking)',
-    description: 'Deep reasoning with extended thinking',
-    provider: 'openrouter',
-    realModel: 'deepseek/deepseek-r1',
+    description: 'Deep reasoning — hardest tasks',
+    provider: 'groq',
+    realModel: 'deepseek-r1-distill-llama-70b',
     isThinking: true,
-    contextWindow: 163840,
+    contextWindow: 131072,
     category: 'thinking'
   }
 ]
@@ -58,10 +58,10 @@ export function getModelById(id: string): AIModel | undefined {
 
 export function getRealModel(fanMadeId: string): string {
   const model = getModelById(fanMadeId)
-  return model?.realModel ?? MODELS[1].realModel
+  return model?.realModel ?? 'gemini-2.0-flash'
 }
 
 export function getModelProvider(fanMadeId: string): string {
   const model = getModelById(fanMadeId)
-  return model?.provider ?? 'openrouter'
+  return model?.provider ?? 'google'
 }

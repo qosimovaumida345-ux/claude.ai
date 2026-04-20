@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   User, Key, CreditCard, CheckCircle, XCircle, Loader2,
-  Eye, EyeOff, Save, Shield, Globe, Zap
+  Eye, EyeOff, Save, Shield, Zap
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
@@ -46,11 +46,13 @@ interface UserData {
   plan: string
   api_key_openrouter?: string
   api_key_groq?: string
+  api_key_google?: string
 }
 
 interface KeyStatus {
   openrouter: boolean | null
   groq: boolean | null
+  google: boolean | null
 }
 
 export default function SettingsPage() {
@@ -60,19 +62,28 @@ export default function SettingsPage() {
   const [name, setName] = useState('')
   const [orKey, setOrKey] = useState('')
   const [groqKey, setGroqKey] = useState('')
+  const [googleKey, setGoogleKey] = useState('')
   const [showOrKey, setShowOrKey] = useState(false)
   const [showGroqKey, setShowGroqKey] = useState(false)
+  const [showGoogleKey, setShowGoogleKey] = useState(false)
   const [saving, setSaving] = useState(false)
   const [validating, setValidating] = useState<Record<string, boolean>>({})
-  const [keyStatus, setKeyStatus] = useState<KeyStatus>({ openrouter: null, groq: null })
+  const [keyStatus, setKeyStatus] = useState<KeyStatus>({
+    openrouter: null,
+    groq: null,
+    google: null
+  })
 
   useEffect(() => {
-    fetch('/api/user').then(r => r.json()).then(d => {
-      setUserData(d)
-      setName(d.name ?? '')
-      setOrKey(d.api_key_openrouter ?? '')
-      setGroqKey(d.api_key_groq ?? '')
-    })
+    fetch('/api/user')
+      .then(r => r.json())
+      .then(d => {
+        setUserData(d)
+        setName(d.name ?? '')
+        setOrKey(d.api_key_openrouter ?? '')
+        setGroqKey(d.api_key_groq ?? '')
+        setGoogleKey(d.api_key_google ?? '')
+      })
   }, [])
 
   const saveProfile = async () => {
@@ -92,14 +103,21 @@ export default function SettingsPage() {
     const res = await fetch('/api/user', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ api_key_openrouter: orKey, api_key_groq: groqKey })
+      body: JSON.stringify({
+        api_key_openrouter: orKey,
+        api_key_groq: groqKey,
+        api_key_google: googleKey
+      })
     })
     setSaving(false)
     if (res.ok) toast.success('API keys saved')
     else toast.error('Failed to save')
   }
 
-  const validateKey = async (provider: 'openrouter' | 'groq', key: string) => {
+  const validateKey = async (
+    provider: 'openrouter' | 'groq' | 'google',
+    key: string
+  ) => {
     if (!key) return
     setValidating(v => ({ ...v, [provider]: true }))
     const res = await fetch('/api/user', {
@@ -110,29 +128,39 @@ export default function SettingsPage() {
     const data = await res.json()
     setKeyStatus(s => ({ ...s, [provider]: data.valid }))
     setValidating(v => ({ ...v, [provider]: false }))
-    toast(data.valid ? 'API key is valid' : 'Invalid API key', { icon: data.valid ? '✅' : '❌' })
+    toast(data.valid ? 'API key is valid ✅' : 'Invalid API key ❌')
   }
 
   const KeyInput = ({
-    label, value, onChange, show, onToggle, provider, hint
+    label,
+    value,
+    onChange,
+    show,
+    onToggle,
+    provider,
+    hint,
+    placeholder = 'sk-...'
   }: {
     label: string
     value: string
     onChange: (v: string) => void
     show: boolean
     onToggle: () => void
-    provider: 'openrouter' | 'groq'
+    provider: 'openrouter' | 'groq' | 'google'
     hint: string
+    placeholder?: string
   }) => (
     <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1.5">{label}</label>
+      <label className="block text-xs font-medium text-gray-600 mb-1.5">
+        {label}
+      </label>
       <div className="flex gap-2">
         <div className="relative flex-1">
           <input
             type={show ? 'text' : 'password'}
             value={value}
             onChange={e => onChange(e.target.value)}
-            placeholder="sk-..."
+            placeholder={placeholder}
             className="input-field pr-10 font-mono text-xs"
           />
           <button
@@ -176,7 +204,9 @@ export default function SettingsPage() {
               onClick={() => setTab(t.id)}
               className={cn(
                 'flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200',
-                tab === t.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                tab === t.id
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
               )}
             >
               <t.icon className="w-4 h-4" />
@@ -186,6 +216,7 @@ export default function SettingsPage() {
         </div>
 
         <AnimatePresence mode="wait">
+          {/* PROFILE TAB */}
           {tab === 'profile' && (
             <motion.div
               key="profile"
@@ -195,13 +226,19 @@ export default function SettingsPage() {
               className="space-y-6"
             >
               <div className="card p-6">
-                <h2 className="text-sm font-semibold text-gray-800 mb-4">Personal Info</h2>
+                <h2 className="text-sm font-semibold text-gray-800 mb-4">
+                  Personal Info
+                </h2>
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#00CDD9] to-[#009aa5] flex items-center justify-center text-white text-xl font-bold">
-                    {name?.[0]?.toUpperCase() ?? userData?.email?.[0]?.toUpperCase() ?? 'U'}
+                    {name?.[0]?.toUpperCase() ??
+                      userData?.email?.[0]?.toUpperCase() ??
+                      'U'}
                   </div>
                   <div>
-                    <p className="font-semibold text-gray-900">{userData?.email}</p>
+                    <p className="font-semibold text-gray-900">
+                      {userData?.email}
+                    </p>
                     <span className="text-xs bg-[#e0fafb] text-[#00919b] px-2 py-0.5 rounded-full font-medium capitalize">
                       {userData?.plan ?? 'free'} plan
                     </span>
@@ -209,7 +246,9 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1.5">Display name</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                      Display name
+                    </label>
                     <input
                       type="text"
                       value={name}
@@ -219,7 +258,9 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1.5">Email</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                      Email
+                    </label>
                     <input
                       type="email"
                       value={userData?.email ?? ''}
@@ -227,8 +268,16 @@ export default function SettingsPage() {
                       className="input-field opacity-60 cursor-not-allowed"
                     />
                   </div>
-                  <button onClick={saveProfile} disabled={saving} className="btn-primary">
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  <button
+                    onClick={saveProfile}
+                    disabled={saving}
+                    className="btn-primary"
+                  >
+                    {saving ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
                     Save changes
                   </button>
                 </div>
@@ -236,6 +285,7 @@ export default function SettingsPage() {
             </motion.div>
           )}
 
+          {/* API KEYS TAB */}
           {tab === 'api' && (
             <motion.div
               key="api"
@@ -245,21 +295,29 @@ export default function SettingsPage() {
               className="space-y-6"
             >
               <div className="card p-6">
-                <h2 className="text-sm font-semibold text-gray-800 mb-1">API Keys</h2>
+                <h2 className="text-sm font-semibold text-gray-800 mb-1">
+                  API Keys
+                </h2>
                 <p className="text-xs text-gray-400 mb-6">
-                  Add your own API keys to use more powerful models. Keys are encrypted and stored securely.
+                  Add your own API keys. Keys are stored securely. If multiple
+                  keys are provided, the best available provider is used
+                  automatically.
                 </p>
 
                 <div className="space-y-5">
+                  {/* Google AI */}
                   <KeyInput
-                    label="OpenRouter API Key"
-                    value={orKey}
-                    onChange={setOrKey}
-                    show={showOrKey}
-                    onToggle={() => setShowOrKey(!showOrKey)}
-                    provider="openrouter"
-                    hint="Get your key at openrouter.ai/keys — enables access to 200+ AI models"
+                    label="Google AI API Key (Gemini)"
+                    value={googleKey}
+                    onChange={setGoogleKey}
+                    show={showGoogleKey}
+                    onToggle={() => setShowGoogleKey(!showGoogleKey)}
+                    provider="google"
+                    placeholder="AIza..."
+                    hint="Get your key at aistudio.google.com — Gemini 2.0 Flash / 2.5 Pro (free tier, high limits)"
                   />
+
+                  {/* Groq */}
                   <KeyInput
                     label="Groq API Key"
                     value={groqKey}
@@ -267,39 +325,55 @@ export default function SettingsPage() {
                     show={showGroqKey}
                     onToggle={() => setShowGroqKey(!showGroqKey)}
                     provider="groq"
-                    hint="Get your key at console.groq.com — ultra-fast inference"
+                    hint="Get your key at console.groq.com — ultra-fast inference (free tier)"
                   />
+
+                  {/* OpenRouter */}
+                  <KeyInput
+                    label="OpenRouter API Key"
+                    value={orKey}
+                    onChange={setOrKey}
+                    show={showOrKey}
+                    onToggle={() => setShowOrKey(!showOrKey)}
+                    provider="openrouter"
+                    hint="Get your key at openrouter.ai/keys — 200+ models"
+                  />
+
+                  <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                    <Zap className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                    <p className="text-xs text-blue-700">
+                      <strong>Priority:</strong> Google AI → Groq → OpenRouter.
+                      If a key is missing or fails, the next available provider
+                      is used automatically.
+                    </p>
+                  </div>
 
                   <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-100 rounded-xl">
                     <Shield className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                     <p className="text-xs text-amber-700">
-                      If no key is provided, the app uses a shared default key with rate limits. Add your own key for unlimited access.
+                      If no key is provided, the app uses a shared default key
+                      with rate limits. Add your own key for better limits.
                     </p>
                   </div>
 
-                  <button onClick={saveApiKeys} disabled={saving} className="btn-primary">
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  <button
+                    onClick={saveApiKeys}
+                    disabled={saving}
+                    className="btn-primary"
+                  >
+                    {saving ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
                     Save API keys
                   </button>
-                </div>
-              </div>
-
-              <div className="card p-6">
-                <h2 className="text-sm font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-[#00CDD9]" />
-                  Live Model Import
-                </h2>
-                <p className="text-xs text-gray-500 mb-3">
-                  With your OpenRouter key, all available models are automatically imported. Models are refreshed every 5 minutes.
-                </p>
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <Zap className="w-3.5 h-3.5 text-[#00CDD9]" />
-                  <span>200+ models available via OpenRouter</span>
                 </div>
               </div>
             </motion.div>
           )}
 
+          {/* PLAN TAB */}
           {tab === 'plan' && (
             <motion.div
               key="plan"
@@ -316,7 +390,8 @@ export default function SettingsPage() {
                   key={plan.id}
                   className={cn(
                     'card p-5 relative',
-                    plan.highlight && 'border-[#00CDD9] ring-2 ring-[#00CDD9]/10'
+                    plan.highlight &&
+                      'border-[#00CDD9] ring-2 ring-[#00CDD9]/10'
                   )}
                 >
                   {plan.highlight && (
@@ -331,8 +406,12 @@ export default function SettingsPage() {
                   )}
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <h3 className="font-semibold text-gray-900">{plan.name}</h3>
-                      <p className="text-2xl font-bold text-gray-900 mt-0.5">{plan.price}</p>
+                      <h3 className="font-semibold text-gray-900">
+                        {plan.name}
+                      </h3>
+                      <p className="text-2xl font-bold text-gray-900 mt-0.5">
+                        {plan.price}
+                      </p>
                     </div>
                     {plan.current && userData?.plan === plan.id && (
                       <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-lg font-medium">
@@ -342,7 +421,10 @@ export default function SettingsPage() {
                   </div>
                   <ul className="space-y-1.5 mb-4">
                     {plan.features.map(f => (
-                      <li key={f} className="flex items-center gap-2 text-xs text-gray-600">
+                      <li
+                        key={f}
+                        className="flex items-center gap-2 text-xs text-gray-600"
+                      >
                         <CheckCircle className="w-3.5 h-3.5 text-[#00CDD9] shrink-0" />
                         {f}
                       </li>
@@ -354,9 +436,14 @@ export default function SettingsPage() {
                       plan.highlight
                         ? 'bg-[#00CDD9] hover:bg-[#00b8c4] text-white'
                         : 'bg-gray-100 hover:bg-gray-200 text-gray-600',
-                      (plan.badge || (plan.current && userData?.plan === plan.id)) && 'opacity-50 cursor-not-allowed'
+                      (plan.badge ||
+                        (plan.current && userData?.plan === plan.id)) &&
+                        'opacity-50 cursor-not-allowed'
                     )}
-                    disabled={!!(plan.badge || (plan.current && userData?.plan === plan.id))}
+                    disabled={!!(
+                      plan.badge ||
+                      (plan.current && userData?.plan === plan.id)
+                    )}
                   >
                     {plan.current && userData?.plan === plan.id
                       ? 'Current plan'

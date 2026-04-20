@@ -4,10 +4,72 @@ import { createServiceClient } from '@/lib/supabase'
 import { getModelById } from '@/lib/models'
 import { NextRequest, NextResponse } from 'next/server'
 
+interface ProviderConfig {
+  url: string
+  key: string
+  model: string
+}
+
+function buildProviderConfig(
+  provider: string,
+  realModel: string,
+  userKeys: { google?: string; groq?: string; openrouter?: string }
+): ProviderConfig | null {
+  switch (provider) {
+    case 'google': {
+      const key = userKeys.google || process.env.GOOGLE_AI_API_KEY
+      if (!key) return null
+      return {
+        url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+        key,
+        model: realModel
+      }
+    }
+    case 'groq': {
+      const key = userKeys.groq || process.env.GROQ_API_KEY
+      if (!key) return null
+      return {
+        url: 'https://api.groq.com/openai/v1/chat/completions',
+        key,
+        model: realModel
+      }
+    }
+    case 'openrouter': {
+      const key = userKeys.openrouter || process.env.OPENROUTER_API_KEY
+      if (!key) return null
+      return {
+        url: 'https://openrouter.ai/api/v1/chat/completions',
+        key,
+        model: realModel
+      }
+    }
+    default:
+      return null
+  }
+}
+
+async function getUserId(session: any, db: any): Promise<string | null> {
+  if (session?.user?.id) return session.user.id
+
+  const email = session?.user?.email
+  if (!email) return null
+
+  const { data } = await db
+    .from('users')
+    .select('id')
+    .eq('email', email)
+    .single()
+
+  return data?.id ?? null
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
+    const db = createServiceClient()
+    const userId = await getUserId(session, db)
+
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -18,43 +80,52 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Messages required' }, { status: 400 })
     }
 
-    const deepseekKey = process.env.DEEPSEEK_API_KEY
-    const baseUrl = process.env.DEEPSEEK_BASE_URL
-    const deepseekChatModel = process.env.DEEPSEEK_CHAT_MODEL
-    const deepseekReasonerModel = process.env.DEEPSEEK_REASONER_MODEL
+    // User keys (DB dan)
+    const { data: userData } = await db
+      .from('users')
+      .select('api_key_openrouter, api_key_groq, api_key_google')
+      .eq('id', userId)
+      .single()
 
-    if (!deepseekKey || !baseUrl || !deepseekChatModel || !deepseekReasonerModel) {
-      return NextResponse.json(
-        { error: 'Missing DeepSeek env vars (DEEPSEEK_API_KEY/BASE_URL/CHAT_MODEL/REASONER_MODEL)' },
-        { status: 500 }
-      )
+    const userKeys = {
+      google: userData?.api_key_google || undefined,
+      groq: userData?.api_key_groq || undefined,
+      openrouter: userData?.api_key_openrouter || undefined
     }
 
-    // deepseek chat completions URL
-    // docs: base_url = https://api.deepseek.com, OpenAI-compatible -> /v1/chat/completions
-    const chatCompletionsUrl = baseUrl.endsWith('/v1')
-      ? `${baseUrl}/chat/completions`
-      : `${baseUrl}/v1/chat/completions`
-
     const fanModel = getModelById(model)
-    const deepseekModel = fanModel?.isThinking ? deepseekReasonerModel : deepseekChatModel
+    const provider = fanModel?.provider ?? 'google'
+    const realModel = fanModel?.realModel ?? 'gemini-2.0-flash'
+
+    // Provider config (user key → env key)
+    const config = buildProviderConfig(provider, realModel, userKeys)
+
+    if (!config) {
+      return NextResponse.json(
+        { error: `No API key available for provider: ${provider}. Add your key in Settings → API Keys.` },
+        { status: 400 }
+      )
+    }
 
     const finalMessages = systemPrompt
       ? [{ role: 'system', content: systemPrompt }, ...messages]
       : messages
 
-    const db = createServiceClient()
-
-    const upstreamRes = await fetch(chatCompletionsUrl, {
+    const upstreamRes = await fetch(config.url, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${deepseekKey}`,
-        'Content-Type': 'application/json'
+        Authorization: `Bearer ${config.key}`,
+        'Content-Type': 'application/json',
+        ...(provider === 'openrouter' && {
+          'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL ?? 'https://claude-ai-8iev.onrender.com',
+          'X-Title': 'Claude Fan-Made'
+        })
       },
       body: JSON.stringify({
-        model: deepseekModel,
+        model: config.model,
         messages: finalMessages,
-        stream: true
+        stream: true,
+        max_tokens: 8192
       })
     })
 
@@ -66,6 +137,10 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    if (!upstreamRes.body) {
+      return NextResponse.json({ error: 'No response body' }, { status: 502 })
+    }
+
     let fullContent = ''
     let buffer = ''
     const decoder = new TextDecoder()
@@ -73,8 +148,6 @@ export async function POST(req: NextRequest) {
     const transform = new TransformStream({
       transform(chunk, controller) {
         buffer += decoder.decode(chunk, { stream: true })
-
-        // SSE: lines like "data: {json}" and "data: [DONE]"
         const lines = buffer.split('\n')
         buffer = lines.pop() ?? ''
 
@@ -87,33 +160,26 @@ export async function POST(req: NextRequest) {
 
           try {
             const json = JSON.parse(data)
-
-            const delta =
-              json?.choices?.[0]?.delta?.content ??
-              json?.choices?.[0]?.message?.content ??
-              ''
-
+            const delta = json?.choices?.[0]?.delta?.content ?? ''
             if (delta) {
               fullContent += delta
               controller.enqueue(new TextEncoder().encode(delta))
             }
           } catch {
-            // ignore broken partial lines
+            // ignore broken SSE lines
           }
         }
       },
 
       async flush() {
-        // assistant javobini DB ga yozish
         if (sessionId && fullContent) {
           try {
             await db.from('messages').insert({
               session_id: sessionId,
               role: 'assistant',
               content: fullContent,
-              model // fan-made id ni saqlaymiz (sizning oldingi logikangizga mos)
+              model
             })
-
             await db
               .from('chat_sessions')
               .update({ updated_at: new Date().toISOString() })
@@ -124,10 +190,6 @@ export async function POST(req: NextRequest) {
         }
       }
     })
-
-    if (!upstreamRes.body) {
-      return NextResponse.json({ error: 'No upstream body' }, { status: 502 })
-    }
 
     return new Response(upstreamRes.body.pipeThrough(transform), {
       headers: {

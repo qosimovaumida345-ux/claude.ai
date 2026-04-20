@@ -6,6 +6,7 @@ export interface User {
   plan: 'free' | 'pro' | 'team'
   api_key_openrouter?: string
   api_key_groq?: string
+  api_key_google?: string
   created_at: string
 }
 
@@ -34,7 +35,7 @@ export interface AIModel {
   id: string
   name: string
   description: string
-  provider: 'openrouter' | 'groq'
+  provider: 'openrouter' | 'groq' | 'google'
   realModel: string
   isThinking?: boolean
   isFast?: boolean
@@ -60,6 +61,7 @@ export interface ExtractedFile {
 }
 
 export interface ApiKeyStatus {
-  openrouter: boolean
-  groq: boolean
+  openrouter: boolean | null
+  groq: boolean | null
+  google: boolean | null
 }

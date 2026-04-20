@@ -6,7 +6,7 @@ export const MODELS: AIModel[] = [
     name: 'Claude Fan-Made Haiku',
     description: 'Fast coding/chat (Cerebras)',
     provider: 'cerebras',
-    realModel: 'qwen-3-coder-480b-free',
+    realModel: 'llama3.1-8b',
     isFast: true,
     contextWindow: 131072,
     category: 'haiku'
@@ -16,7 +16,7 @@ export const MODELS: AIModel[] = [
     name: 'Claude Fan-Made 4.6',
     description: 'Balanced coding/chat (Cerebras)',
     provider: 'cerebras',
-    realModel: 'qwen-3-coder-480b-free',
+    realModel: 'llama-3.3-70b',
     contextWindow: 131072,
     category: 'sonnet'
   },
@@ -25,7 +25,7 @@ export const MODELS: AIModel[] = [
     name: 'Claude Fan-Made 4.7',
     description: 'Stronger coding/chat (Cerebras)',
     provider: 'cerebras',
-    realModel: 'qwen-3-coder-480b-free',
+    realModel: 'llama-3.3-70b',
     contextWindow: 131072,
     category: 'sonnet'
   },
@@ -34,7 +34,7 @@ export const MODELS: AIModel[] = [
     name: 'Claude Fan-Made 4.6 Opus',
     description: 'Best coding (Cerebras)',
     provider: 'cerebras',
-    realModel: 'qwen-3-coder-480b-free',
+    realModel: 'qwen-3-32b',
     contextWindow: 131072,
     category: 'opus'
   },
@@ -43,7 +43,7 @@ export const MODELS: AIModel[] = [
     name: 'Claude Fan-Made 4.6 Opus (Thinking)',
     description: 'Deep reasoning mode (Cerebras)',
     provider: 'cerebras',
-    realModel: 'qwen-3-235b-a22b-thinking-2507', // agar error bo‘lsa bu satrni Cerebras docsdagi nom bilan almashtiramiz
+    realModel: 'qwen-3-32b',
     isThinking: true,
     contextWindow: 131072,
     category: 'thinking'

@@ -5,8 +5,7 @@ export interface User {
   avatar?: string
   plan: 'free' | 'pro' | 'team'
   api_key_openrouter?: string
-  api_key_groq?: string
-  api_key_google?: string
+  api_key_cerebras?: string
   created_at: string
 }
 
@@ -35,7 +34,7 @@ export interface AIModel {
   id: string
   name: string
   description: string
-  provider: 'openrouter' | 'groq' | 'google'
+  provider: 'openrouter' | 'cerebras'
   realModel: string
   isThinking?: boolean
   isFast?: boolean
@@ -62,6 +61,5 @@ export interface ExtractedFile {
 
 export interface ApiKeyStatus {
   openrouter: boolean | null
-  groq: boolean | null
-  google: boolean | null
+  cerebras: boolean | null
 }

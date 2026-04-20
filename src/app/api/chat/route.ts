@@ -11,34 +11,26 @@ interface ProviderConfig {
 }
 
 function buildProviderConfig(
-  provider: string,
+  provider: 'openrouter' | 'cerebras',
   realModel: string,
-  userKeys: { google?: string; groq?: string; openrouter?: string }
+  userKeys: { openrouter?: string; cerebras?: string }
 ): ProviderConfig | null {
   switch (provider) {
-    case 'google': {
-      const key = userKeys.google || process.env.GOOGLE_AI_API_KEY
-      if (!key) return null
-      return {
-        url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
-        key,
-        model: realModel
-      }
-    }
-    case 'groq': {
-      const key = userKeys.groq || process.env.GROQ_API_KEY
-      if (!key) return null
-      return {
-        url: 'https://api.groq.com/openai/v1/chat/completions',
-        key,
-        model: realModel
-      }
-    }
     case 'openrouter': {
       const key = userKeys.openrouter || process.env.OPENROUTER_API_KEY
       if (!key) return null
       return {
         url: 'https://openrouter.ai/api/v1/chat/completions',
+        key,
+        model: realModel
+      }
+    }
+    case 'cerebras': {
+      const key = userKeys.cerebras || process.env.CEREBRAS_API_KEY
+      if (!key) return null
+      const baseUrl = process.env.CEREBRAS_BASE_URL ?? 'https://api.cerebras.ai/v1'
+      return {
+        url: `${baseUrl}/chat/completions`,
         key,
         model: realModel
       }
@@ -50,16 +42,9 @@ function buildProviderConfig(
 
 async function getUserId(session: any, db: any): Promise<string | null> {
   if (session?.user?.id) return session.user.id
-
   const email = session?.user?.email
   if (!email) return null
-
-  const { data } = await db
-    .from('users')
-    .select('id')
-    .eq('email', email)
-    .single()
-
+  const { data } = await db.from('users').select('id').eq('email', email).single()
   return data?.id ?? null
 }
 
@@ -69,9 +54,7 @@ export async function POST(req: NextRequest) {
     const db = createServiceClient()
     const userId = await getUserId(session, db)
 
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json()
     const { messages, model, sessionId, systemPrompt } = body
@@ -80,36 +63,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Messages required' }, { status: 400 })
     }
 
-    // User keys (DB dan)
-    const { data: userData } = await db
+    const userRow = await db
       .from('users')
-      .select('api_key_openrouter, api_key_groq, api_key_google')
+      .select('api_key_openrouter, api_key_cerebras')
       .eq('id', userId)
       .single()
 
+    const userData = userRow.data ?? {}
+
     const userKeys = {
-      google: userData?.api_key_google || undefined,
-      groq: userData?.api_key_groq || undefined,
-      openrouter: userData?.api_key_openrouter || undefined
+      openrouter: userData?.api_key_openrouter || undefined,
+      cerebras: userData?.api_key_cerebras || undefined
     }
 
     const fanModel = getModelById(model)
-    const provider = fanModel?.provider ?? 'google'
-    const realModel = fanModel?.realModel ?? 'gemini-2.0-flash'
+    const provider = (fanModel?.provider ?? 'cerebras') as 'openrouter' | 'cerebras'
+    const realModel = fanModel?.realModel ?? 'qwen-3-coder-480b-free'
+    const isThinking = !!fanModel?.isThinking || fanModel?.category === 'thinking'
 
-    // Provider config (user key → env key)
     const config = buildProviderConfig(provider, realModel, userKeys)
-
     if (!config) {
       return NextResponse.json(
-        { error: `No API key available for provider: ${provider}. Add your key in Settings → API Keys.` },
+        { error: `No API key available for ${provider}. Add it in Settings.` },
         { status: 400 }
       )
     }
 
-    const finalMessages = systemPrompt
+    const finalMessagesAll = systemPrompt
       ? [{ role: 'system', content: systemPrompt }, ...messages]
       : messages
+
+    // thinking uchun tokenni tejaymiz: history qisqartirish + max_tokens kichraytirish
+    const messagesForRequest = isThinking ? finalMessagesAll.slice(-8) : finalMessagesAll
+    const maxTokens = isThinking ? 3000 : 8192
 
     const upstreamRes = await fetch(config.url, {
       method: 'POST',
@@ -123,9 +109,9 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         model: config.model,
-        messages: finalMessages,
+        messages: messagesForRequest,
         stream: true,
-        max_tokens: 8192
+        max_tokens: maxTokens
       })
     })
 
@@ -148,6 +134,7 @@ export async function POST(req: NextRequest) {
     const transform = new TransformStream({
       transform(chunk, controller) {
         buffer += decoder.decode(chunk, { stream: true })
+
         const lines = buffer.split('\n')
         buffer = lines.pop() ?? ''
 
@@ -160,7 +147,11 @@ export async function POST(req: NextRequest) {
 
           try {
             const json = JSON.parse(data)
-            const delta = json?.choices?.[0]?.delta?.content ?? ''
+            const delta =
+              json?.choices?.[0]?.delta?.content ??
+              json?.choices?.[0]?.message?.content ??
+              ''
+
             if (delta) {
               fullContent += delta
               controller.enqueue(new TextEncoder().encode(delta))
@@ -180,6 +171,7 @@ export async function POST(req: NextRequest) {
               content: fullContent,
               model
             })
+
             await db
               .from('chat_sessions')
               .update({ updated_at: new Date().toISOString() })

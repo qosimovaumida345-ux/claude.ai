@@ -4,9 +4,9 @@ export const MODELS: AIModel[] = [
   {
     id: 'claude-fan-made-haiku',
     name: 'Claude Fan-Made Haiku',
-    description: 'Fast — lightweight coding/chat',
+    description: 'Fast — quick code & short answers',
     provider: 'groq',
-    realModel: 'llama3-8b-8192',
+    realModel: 'llama-3.1-8b-instant',
     isFast: true,
     contextWindow: 131072,
     category: 'haiku'
@@ -14,7 +14,7 @@ export const MODELS: AIModel[] = [
   {
     id: 'claude-fan-made-4.6',
     name: 'Claude Fan-Made 4.6',
-    description: 'Balanced — code + chat',
+    description: 'Balanced — strong coding/chat',
     provider: 'groq',
     realModel: 'llama-3.3-70b-versatile',
     contextWindow: 131072,
@@ -23,18 +23,18 @@ export const MODELS: AIModel[] = [
   {
     id: 'claude-fan-made-4.7',
     name: 'Claude Fan-Made 4.7',
-    description: 'Strong — complex code',
+    description: 'Stronger — complex code & reasoning',
     provider: 'groq',
-    realModel: 'llama-3.3-70b-versatile',
+    realModel: 'groq/compound',
     contextWindow: 131072,
     category: 'sonnet'
   },
   {
     id: 'claude-fan-made-4.6-opus',
     name: 'Claude Fan-Made 4.6 Opus',
-    description: 'Best coding quality (without Google)',
+    description: 'Best quality — deeper coding',
     provider: 'groq',
-    realModel: 'llama-3.3-70b-versatile',
+    realModel: 'meta-llama/llama-4-scout-17b-16e-instruct',
     contextWindow: 131072,
     category: 'opus'
   },
@@ -43,7 +43,7 @@ export const MODELS: AIModel[] = [
     name: 'Claude Fan-Made 4.6 Opus (Thinking)',
     description: 'Deep reasoning mode',
     provider: 'groq',
-    realModel: 'deepseek-r1-distill-llama-70b',
+    realModel: 'qwen/qwen3-32b',
     isThinking: true,
     contextWindow: 131072,
     category: 'thinking'

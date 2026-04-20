@@ -1,19 +1,20 @@
-import NextAuth, { NextAuthOptions } from 'next-auth'
+import NextAuth from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
 import GitHubProvider from 'next-auth/providers/github'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { createServiceClient } from '@/lib/supabase'
+import type { NextAuthOptions } from 'next-auth'
 
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
     GitHubProvider({
       clientId: process.env.GITHUB_CLIENT_ID!,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET!
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
     }),
     CredentialsProvider({
       name: 'credentials',
@@ -23,16 +24,25 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
+
         const db = createServiceClient()
         const { data: user } = await db
           .from('users')
           .select('*')
           .eq('email', credentials.email)
           .single()
+
         if (!user || !user.password_hash) return null
+
         const valid = await bcrypt.compare(credentials.password, user.password_hash)
         if (!valid) return null
-        return { id: user.id, email: user.email, name: user.name, image: user.avatar }
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          image: user.avatar
+        }
       }
     })
   ],
@@ -45,6 +55,7 @@ export const authOptions: NextAuthOptions = {
           .select('id')
           .eq('email', user.email!)
           .single()
+
         if (!existing) {
           await db.from('users').insert({
             email: user.email,
@@ -64,6 +75,7 @@ export const authOptions: NextAuthOptions = {
           .select('id, plan')
           .eq('email', token.email!)
           .single()
+
         if (data) {
           token.userId = data.id
           token.plan = data.plan
@@ -83,10 +95,22 @@ export const authOptions: NextAuthOptions = {
     signIn: '/login',
     error: '/login'
   },
-  session: { strategy: 'jwt' },
+  session: {
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60 // 30 kun
+  },
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production' // Render da true bo'ladi
+      }
+    }
+  },
   secret: process.env.NEXTAUTH_SECRET,
-  trustHost: true
-
 }
 
 const handler = NextAuth(authOptions)

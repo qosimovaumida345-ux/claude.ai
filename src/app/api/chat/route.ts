@@ -4,13 +4,27 @@ import { createServiceClient } from '@/lib/supabase'
 import { getRealModel } from '@/lib/models'
 import { NextRequest, NextResponse } from 'next/server'
 
+async function getUserId() {
+  const session = await getServerSession(authOptions)
+  const db = createServiceClient()
+
+  let userId = session?.user?.id
+  if (!userId && session?.user?.email) {
+    const { data } = await db
+      .from('users')
+      .select('id')
+      .eq('email', session.user.email)
+      .single()
+
+    userId = data?.id
+  }
+  return userId
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const userId = await getUserId()
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json()
     const { messages, model, sessionId, systemPrompt, apiKey } = body
@@ -24,7 +38,7 @@ export async function POST(req: NextRequest) {
     const { data: user } = await db
       .from('users')
       .select('api_key_openrouter, api_key_groq')
-      .eq('id', session.user.id)
+      .eq('id', userId)
       .single()
 
     const openrouterKey =
@@ -60,7 +74,6 @@ export async function POST(req: NextRequest) {
 
     if (!upstreamRes.ok) {
       const errText = await upstreamRes.text()
-      console.error('OpenRouter error:', errText)
       return NextResponse.json(
         { error: `Model error: ${errText}` },
         { status: upstreamRes.status }
@@ -84,7 +97,7 @@ export async function POST(req: NextRequest) {
               controller.enqueue(new TextEncoder().encode(delta))
             }
           } catch {
-            // ignore parse errors
+            // ignore
           }
         }
       },

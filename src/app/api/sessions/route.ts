@@ -3,25 +3,37 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { createServiceClient } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
 
+async function getUserIdOr404() {
+  const session = await getServerSession(authOptions)
+  const db = createServiceClient()
+
+  let userId = session?.user?.id
+  if (!userId && session?.user?.email) {
+    const { data } = await db
+      .from('users')
+      .select('id')
+      .eq('email', session.user.email)
+      .single()
+
+    userId = data?.id
+  }
+
+  return userId
+}
+
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const userId = await getUserIdOr404()
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const db = createServiceClient()
     const { data, error } = await db
       .from('chat_sessions')
       .select('*, messages(id, role, content, created_at)')
-      .eq('user_id', session.user.id)
+      .eq('user_id', userId)
       .order('updated_at', { ascending: false })
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json(data ?? [])
   } catch (err) {
     console.error('GET /api/sessions error:', err)
@@ -31,11 +43,8 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const userId = await getUserIdOr404()
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json()
     const db = createServiceClient()
@@ -43,7 +52,7 @@ export async function POST(req: NextRequest) {
     const { data, error } = await db
       .from('chat_sessions')
       .insert({
-        user_id: session.user.id,
+        user_id: userId,
         title: body.title ?? 'New Chat',
         model: body.model ?? 'claude-fan-made-4.6',
         system_prompt: body.systemPrompt ?? null
@@ -51,10 +60,7 @@ export async function POST(req: NextRequest) {
       .select()
       .single()
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json(data)
   } catch (err) {
     console.error('POST /api/sessions error:', err)
@@ -64,18 +70,13 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const userId = await getUserIdOr404()
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json()
     const { id, title, model, systemPrompt } = body
 
-    if (!id) {
-      return NextResponse.json({ error: 'Missing id' }, { status: 400 })
-    }
+    if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
     const db = createServiceClient()
     const { data, error } = await db
@@ -87,14 +88,11 @@ export async function PATCH(req: NextRequest) {
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
-      .eq('user_id', session.user.id)
+      .eq('user_id', userId)
       .select()
       .single()
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json(data)
   } catch (err) {
     console.error('PATCH /api/sessions error:', err)
@@ -104,30 +102,21 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const userId = await getUserIdOr404()
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
-
-    if (!id) {
-      return NextResponse.json({ error: 'Missing id' }, { status: 400 })
-    }
+    if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
     const db = createServiceClient()
     const { error } = await db
       .from('chat_sessions')
       .delete()
       .eq('id', id)
-      .eq('user_id', session.user.id)
+      .eq('user_id', userId)
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ success: true })
   } catch (err) {
     console.error('DELETE /api/sessions error:', err)

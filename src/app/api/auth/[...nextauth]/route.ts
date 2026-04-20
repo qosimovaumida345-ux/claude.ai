@@ -46,34 +46,43 @@ export const authOptions: NextAuthOptions = {
       }
     })
   ],
+
   callbacks: {
     async signIn({ user, account }) {
+      // OAuth orqali user yaratilgan bo‘lishi kerak
       if (account?.provider === 'google' || account?.provider === 'github') {
+        if (!user.email) return false
+
         const db = createServiceClient()
         const { data: existing } = await db
           .from('users')
           .select('id')
-          .eq('email', user.email!)
+          .eq('email', user.email)
           .single()
 
         if (!existing) {
           await db.from('users').insert({
             email: user.email,
-            name: user.name,
-            avatar: user.image,
+            name: user.name ?? null,
+            avatar: user.image ?? null,
             provider: account.provider
           })
         }
       }
       return true
     },
+
     async jwt({ token, user }) {
-      if (user) {
+      // Har so‘rovda token.userId bo‘lmasa, email bo‘yicha DB dan topamiz
+      // (shunda /api/auth/session ichida user.id chiqadi)
+      const email = token.email ?? user?.email
+
+      if (!token.userId && email) {
         const db = createServiceClient()
         const { data } = await db
           .from('users')
           .select('id, plan')
-          .eq('email', token.email!)
+          .eq('email', email)
           .single()
 
         if (data) {
@@ -81,26 +90,35 @@ export const authOptions: NextAuthOptions = {
           token.plan = data.plan
         }
       }
+
       return token
     },
+
     async session({ session, token }) {
-      if (token.userId) {
-        session.user.id = token.userId as string
-        session.user.plan = token.plan as string
+      return {
+        ...session,
+        user: {
+          ...(session.user ?? {}),
+          id: token.userId as string | undefined,
+          plan: token.plan as string | undefined
+        }
       }
-      return session
     }
   },
+
   pages: {
     signIn: '/login',
     error: '/login'
   },
+
   session: {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60
   },
+
   secret: process.env.NEXTAUTH_SECRET,
-  // trustHost type xatosini shu yo'l bilan hal qilamiz
+
+  // trustHost type error uchun
   ...({ trustHost: true } as object)
 }
 

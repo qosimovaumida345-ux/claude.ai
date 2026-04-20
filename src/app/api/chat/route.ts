@@ -10,6 +10,11 @@ interface ProviderConfig {
   model: string
 }
 
+interface UserData {
+  api_key_openrouter?: string
+  api_key_cerebras?: string
+}
+
 function buildProviderConfig(
   provider: 'openrouter' | 'cerebras',
   realModel: string,
@@ -69,7 +74,7 @@ export async function POST(req: NextRequest) {
       .eq('id', userId)
       .single()
 
-    const userData = userRow.data ?? {}
+    const userData: UserData = userRow.data ?? {}
 
     const userKeys = {
       openrouter: userData?.api_key_openrouter || undefined,

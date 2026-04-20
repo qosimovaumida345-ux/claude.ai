@@ -34,7 +34,7 @@ export const MODELS: AIModel[] = [
     name: 'Claude Fan-Made 4.6 Opus',
     description: 'Best coding (Cerebras)',
     provider: 'cerebras',
-    realModel: 'qwen-3-32b',
+    realModel: 'llama-4-scout-17b-16e-instruct',
     contextWindow: 131072,
     category: 'opus'
   },
@@ -43,7 +43,7 @@ export const MODELS: AIModel[] = [
     name: 'Claude Fan-Made 4.6 Opus (Thinking)',
     description: 'Deep reasoning mode (Cerebras)',
     provider: 'cerebras',
-    realModel: 'qwen-3-32b',
+    realModel: 'llama-4-scout-17b-16e-instruct',
     isThinking: true,
     contextWindow: 131072,
     category: 'thinking'

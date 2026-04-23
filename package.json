@@ -40,5 +40,8 @@
     "typescript": "^5.5.4",
     "uuid": "^10.0.0",
     "zustand": "^4.5.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0"
   }
 }

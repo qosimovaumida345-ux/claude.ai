@@ -7,6 +7,7 @@ export const MODELS: AIModel[] = [
     description: 'Llama 3.1 8B (Fastest)',
     provider: 'cerebras',
     realModel: 'llama3.1-8b',
+    image: '/images/llama.png',
     isFast: true,
     contextWindow: 131072,
     category: 'haiku'
@@ -17,6 +18,7 @@ export const MODELS: AIModel[] = [
     description: 'GPT OSS 120B (Balanced)',
     provider: 'cerebras',
     realModel: 'gpt-oss-120b',
+    image: '/images/cerebras.png',
     contextWindow: 131072,
     category: 'sonnet'
   },
@@ -26,6 +28,7 @@ export const MODELS: AIModel[] = [
     description: 'Qwen 3 235B (High Quality)',
     provider: 'cerebras',
     realModel: 'qwen-3-235b-a22b-instruct-2507',
+    image: '/images/qwen.png',
     contextWindow: 131072,
     category: 'sonnet'
   },
@@ -35,6 +38,7 @@ export const MODELS: AIModel[] = [
     description: 'Qwen 3 235B (Best for Coding)',
     provider: 'cerebras',
     realModel: 'qwen-3-235b-a22b-instruct-2507',
+    image: '/images/qwen.png',
     contextWindow: 131072,
     category: 'opus'
   },
@@ -44,9 +48,20 @@ export const MODELS: AIModel[] = [
     description: 'Qwen 3 235B (Deep Reasoning)',
     provider: 'cerebras',
     realModel: 'qwen-3-235b-a22b-instruct-2507',
+    image: '/images/qwen.png',
     isThinking: true,
     contextWindow: 131072,
     category: 'thinking'
+  },
+  {
+    id: 'claude-fan-made-minimax-m2.5',
+    name: 'Claude Fan-Made MiniMax',
+    description: 'MiniMax M2.5 (Ultra Long Context)',
+    provider: 'openrouter',
+    realModel: 'minimax/minimax-m2.5:free',
+    image: '/images/minimax.png',
+    contextWindow: 1000000,
+    category: 'opus'
   }
 ]
 

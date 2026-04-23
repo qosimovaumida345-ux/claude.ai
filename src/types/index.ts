@@ -36,6 +36,7 @@ export interface AIModel {
   description: string
   provider: 'openrouter' | 'cerebras'
   realModel: string
+  image?: string                              // ✅ yangi field
   isThinking?: boolean
   isFast?: boolean
   contextWindow: number

@@ -1,30 +1,35 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, Zap, Brain, Cpu, Sparkles } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MODELS } from '@/lib/models'
 import { cn } from '@/lib/utils'
 import type { AIModel } from '@/types'
 
-const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  haiku: <Zap className="w-3.5 h-3.5 text-yellow-500" />,
-  sonnet: <Cpu className="w-3.5 h-3.5 text-[#00CDD9]" />,
-  opus: <Sparkles className="w-3.5 h-3.5 text-purple-500" />,
-  thinking: <Brain className="w-3.5 h-3.5 text-indigo-500" />
-}
-
-const CATEGORY_COLORS: Record<string, string> = {
-  haiku: 'bg-yellow-50 text-yellow-700',
-  sonnet: 'bg-[#e0fafb] text-[#00919b]',
-  opus: 'bg-purple-50 text-purple-700',
-  thinking: 'bg-indigo-50 text-indigo-700'
-}
-
 interface Props {
   value: string
   onChange: (id: string) => void
   disabled?: boolean
+}
+
+function ModelIcon({ model, size = 'sm' }: { model: AIModel; size?: 'sm' | 'md' }) {
+  const cls = size === 'sm' ? 'w-4 h-4' : 'w-5 h-5'
+  if (model.image) {
+    return (
+      <img
+        src={model.image}
+        alt={model.name}
+        className={cn(cls, 'object-contain rounded-sm')}
+      />
+    )
+  }
+  // fallback: birinchi harf
+  return (
+    <span className={cn(cls, 'flex items-center justify-center rounded-sm bg-gray-200 text-[10px] font-bold text-gray-600')}>
+      {model.name[0]}
+    </span>
+  )
 }
 
 export default function ModelSelector({ value, onChange, disabled }: Props) {
@@ -43,7 +48,7 @@ export default function ModelSelector({ value, onChange, disabled }: Props) {
           open && 'border-[#00CDD9] text-[#00919b]'
         )}
       >
-        {CATEGORY_ICONS[current.category]}
+        <ModelIcon model={current} size="sm" />
         <span className="max-w-[140px] truncate">{current.name}</span>
         <ChevronDown className={cn('w-3 h-3 transition-transform', open && 'rotate-180')} />
       </button>
@@ -76,7 +81,7 @@ export default function ModelSelector({ value, onChange, disabled }: Props) {
                     )}
                   >
                     <div className="mt-0.5 shrink-0">
-                      {CATEGORY_ICONS[model.category]}
+                      <ModelIcon model={model} size="md" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">

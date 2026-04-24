@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Claude Fan-Made CLI v1.0.1 — To'g'rilangan versiya
+// Claude Fan-Made CLI v1.1.0
 
 const readline = require('readline')
 const https = require('https')
@@ -16,10 +16,25 @@ const C = {
   yellow:  '\x1b[33m',
   red:     '\x1b[31m',
   magenta: '\x1b[35m',
-  gray:    '\x1b[90m',
 }
 
-// ── Config fayli (~/.claude-cli.json) ────────────
+// ── Provayderlar ─────────────────────────────────
+const PROVIDERS = {
+  openrouter: {
+    hostname: 'openrouter.ai',
+    path: '/api/v1/chat/completions',
+    model: 'minimax/minimax-m2.5:free',
+    label: 'OpenRouter (MiniMax M2.5 - bepul)',
+  },
+  cerebras: {
+    hostname: 'api.cerebras.ai',
+    path: '/v1/chat/completions',
+    model: 'llama3.1-8b',
+    label: 'Cerebras (Llama 3.1 8B - bepul)',
+  }
+}
+
+// ── Config ────────────────────────────────────────
 const CONFIG_PATH = path.join(
   process.env.HOME || process.env.USERPROFILE || '.',
   '.claude-cli.json'
@@ -38,33 +53,42 @@ function saveConfig(cfg) {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2))
 }
 
-// ── API chaqiruv (Cerebras) ───────────────────────
-function callAPI(messages, apiKey) {
-  return new Promise((resolve, reject) => {
+// ── API chaqiruv ──────────────────────────────────
+function callAPI(messages, cfg) {
+  return new Promise(function(resolve, reject) {
+    const provider = PROVIDERS[cfg.provider]
+
     const bodyObj = {
-      model: 'llama3.3-70b',
+      model: provider.model,
       messages: messages,
       stream: true,
       max_tokens: 8192
     }
     const bodyStr = JSON.stringify(bodyObj)
 
+    const headers = {
+      'Authorization': 'Bearer ' + cfg.apiKey,
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(bodyStr)
+    }
+
+    // OpenRouter uchun qo'shimcha headerlar
+    if (cfg.provider === 'openrouter') {
+      headers['HTTP-Referer'] = 'https://claude-ai-8iev.onrender.com'
+      headers['X-Title'] = 'Claude Fan-Made CLI'
+    }
+
     const options = {
-      hostname: 'api.cerebras.ai',
-      path: '/v1/chat/completions',
+      hostname: provider.hostname,
+      path: provider.path,
       method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + apiKey,
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(bodyStr)
-      }
+      headers: headers
     }
 
     let fullText = ''
     let buffer = ''
 
     const req = https.request(options, function(res) {
-      // Agar xato status bo'lsa
       if (res.statusCode !== 200) {
         let errBody = ''
         res.on('data', function(c) { errBody += c.toString() })
@@ -84,20 +108,15 @@ function callAPI(messages, apiKey) {
           if (!line.startsWith('data:')) continue
           const data = line.slice(5).trim()
           if (!data || data === '[DONE]') continue
-
           try {
             const json = JSON.parse(data)
-            const delta = (json.choices &&
-                          json.choices[0] &&
-                          json.choices[0].delta &&
-                          json.choices[0].delta.content) || ''
+            const delta =
+              (json.choices && json.choices[0] && json.choices[0].delta && json.choices[0].delta.content) || ''
             if (delta) {
               fullText += delta
               process.stdout.write(delta)
             }
-          } catch (e) {
-            // broken SSE line — o'tkazib yuborish
-          }
+          } catch (e) {}
         }
       })
 
@@ -109,188 +128,185 @@ function callAPI(messages, apiKey) {
       res.on('error', reject)
     })
 
-    req.on('error', function(err) {
-      reject(err)
-    })
-
+    req.on('error', reject)
     req.write(bodyStr)
     req.end()
   })
 }
 
 // ── Fayllarni aniqlash ────────────────────────────
-// AI javobidagi kod bloklaridan fayl nomi va kodni topadi
 function extractFiles(text) {
   const results = []
   const seen = new Set()
 
-  // Format 1: ```til:fayl/nomi.ext\nkod\n```
-  const regex1 = /```[a-zA-Z0-9]*:([^\n`]+)\n([\s\S]*?)```/g
+  // Format: ```til:fayl/nomi.ext
+  const r1 = /```[a-zA-Z0-9]*:([^\n`]+)\n([\s\S]*?)```/g
   let m
-  while ((m = regex1.exec(text)) !== null) {
-    const filePath = m[1].trim()
-    const code = m[2].trim()
-    if (filePath && code && !seen.has(filePath)) {
-      seen.add(filePath)
-      results.push({ path: filePath, code: code })
+  while ((m = r1.exec(text)) !== null) {
+    const p = m[1].trim(), c = m[2].trim()
+    if (p && c && !p.includes(' ') && !seen.has(p)) {
+      seen.add(p); results.push({ path: p, code: c })
     }
   }
 
-  // Format 2: ```til\n// file: fayl/nomi.ext\nkod\n```
-  const regex2 = /```[a-zA-Z0-9]*\n\/\/\s*(?:file|FILE|fayl):\s*([^\n]+)\n([\s\S]*?)```/g
-  while ((m = regex2.exec(text)) !== null) {
-    const filePath = m[1].trim()
-    const code = m[2].trim()
-    if (filePath && code && !seen.has(filePath)) {
-      seen.add(filePath)
-      results.push({ path: filePath, code: code })
+  // Format: ```\n// file: fayl/nomi
+  const r2 = /```[a-zA-Z0-9]*\n\/\/\s*(?:file|FILE|fayl):\s*([^\n]+)\n([\s\S]*?)```/g
+  while ((m = r2.exec(text)) !== null) {
+    const p = m[1].trim(), c = m[2].trim()
+    if (p && c && !seen.has(p)) {
+      seen.add(p); results.push({ path: p, code: c })
     }
   }
 
-  // Format 3: ### fayl.ext\n```\nkod\n```
-  const regex3 = /###\s+([^\n]+\.\w+)\n```[^\n]*\n([\s\S]*?)```/g
-  while ((m = regex3.exec(text)) !== null) {
-    const filePath = m[1].trim()
-    const code = m[2].trim()
-    if (filePath && code && !seen.has(filePath)) {
-      seen.add(filePath)
-      results.push({ path: filePath, code: code })
+  // Format: ### fayl.ext
+  const r3 = /###\s+([^\n]+\.\w+)\n```[^\n]*\n([\s\S]*?)```/g
+  while ((m = r3.exec(text)) !== null) {
+    const p = m[1].trim(), c = m[2].trim()
+    if (p && c && !seen.has(p)) {
+      seen.add(p); results.push({ path: p, code: c })
     }
   }
 
   return results
 }
 
-// ── Fayllarni diskka yozish ───────────────────────
+// ── Fayllarni yozish ──────────────────────────────
 function writeFiles(files, workDir) {
-  if (files.length === 0) return
-
+  if (!files.length) return
   console.log('\n' + C.yellow + C.bold + '📁 Yaratilgan fayllar:' + C.reset)
-  for (let i = 0; i < files.length; i++) {
-    const f = files[i]
+  files.forEach(function(f) {
     const fullPath = path.resolve(workDir, f.path)
-    const dir = path.dirname(fullPath)
     try {
-      fs.mkdirSync(dir, { recursive: true })
+      fs.mkdirSync(path.dirname(fullPath), { recursive: true })
       fs.writeFileSync(fullPath, f.code, 'utf-8')
-      const lines = f.code.split('\n').length
       console.log('  ' + C.green + '✓' + C.reset + ' ' + C.cyan + f.path + C.reset +
-                  C.dim + ' (' + lines + ' qator)' + C.reset)
+        C.dim + ' (' + f.code.split('\n').length + ' qator)' + C.reset)
     } catch (err) {
       console.log('  ' + C.red + '✗' + C.reset + ' ' + f.path + ' — ' + err.message)
     }
-  }
+  })
   console.log('')
 }
 
-// ── Boshlang'ich sozlash ──────────────────────────
-function setupConfig(rl, callback) {
-  console.log('\n' + C.yellow + C.bold + '⚙️  Birinchi marta sozlash' + C.reset)
-  console.log(C.dim + 'Cerebras API kalit olish: https://cloud.cerebras.ai (bepul)' + C.reset + '\n')
+// ── Sozlash ───────────────────────────────────────
+function runSetup(rl, done) {
+  console.log('\n' + C.yellow + C.bold + '⚙️  Sozlash' + C.reset + '\n')
+  console.log('Qaysi provayderr ishlatmoqchisiz?\n')
+  console.log('  ' + C.cyan + '1' + C.reset + ' — OpenRouter  (MiniMax M2.5:free) — ' + C.green + 'TAVSIYA' + C.reset)
+  console.log('     API kalit: https://openrouter.ai/keys')
+  console.log('     Saytingizda OPENROUTER_API_KEY borku — uni ishlating!\n')
+  console.log('  ' + C.cyan + '2' + C.reset + ' — Cerebras    (Llama 3.1 8B)')
+  console.log('     API kalit: https://cloud.cerebras.ai\n')
 
-  rl.question(C.cyan + 'API kalitingiz: ' + C.reset, function(input) {
-    const key = input.trim()
-    if (!key) {
-      console.log(C.red + 'Kalit kiritilmadi. Qayta ishga tushiring.' + C.reset)
-      process.exit(1)
-    }
+  rl.question(C.cyan + 'Tanlang (1 yoki 2): ' + C.reset, function(choice) {
+    const provider = choice.trim() === '2' ? 'cerebras' : 'openrouter'
+    const p = PROVIDERS[provider]
 
-    // Kalitni sinab ko'rish
-    console.log(C.dim + 'Tekshirilmoqda...' + C.reset)
-    const testMessages = [{ role: 'user', content: 'hi' }]
-
-    callAPI(testMessages, key)
-      .then(function() {
-        saveConfig({ apiKey: key })
-        console.log('\n' + C.green + '✓ API kalit to\'g\'ri! Sozlamalar saqlandi.' + C.reset + '\n')
-        callback(key)
-      })
-      .catch(function(err) {
-        console.log('\n' + C.red + '✗ API kalit xato: ' + err.message + C.reset)
-        console.log(C.yellow + 'Kalitni tekshirib qayta urinib ko\'ring.' + C.reset)
+    console.log('\n' + C.dim + 'Tanlandi: ' + p.label + C.reset)
+    rl.question(C.cyan + 'API kalitingiz: ' + C.reset, function(key) {
+      const apiKey = key.trim()
+      if (!apiKey) {
+        console.log(C.red + 'Kalit kiritilmadi!' + C.reset)
         process.exit(1)
-      })
+      }
+
+      console.log(C.dim + '\nTekshirilmoqda...' + C.reset)
+
+      callAPI([{ role: 'user', content: 'hi' }], { provider, apiKey })
+        .then(function() {
+          const cfg = { provider, apiKey }
+          saveConfig(cfg)
+          console.log('\n' + C.green + '✓ API kalit ishlaydi! Saqlandi.' + C.reset + '\n')
+          done(cfg)
+        })
+        .catch(function(err) {
+          console.log('\n' + C.red + '✗ API kalit xato: ' + err.message + C.reset)
+          console.log(C.yellow + 'Kalitni tekshirib qayta urinib ko\'ring.' + C.reset)
+          process.exit(1)
+        })
+    })
   })
 }
 
 // ── Banner ────────────────────────────────────────
-function printBanner() {
+function banner() {
   console.log(
     '\n' + C.cyan + C.bold +
     '  ╔══════════════════════════════════════╗\n' +
-    '  ║    Claude Fan-Made CLI  v1.0.1       ║\n' +
+    '  ║    Claude Fan-Made CLI  v1.1.0       ║\n' +
     '  ║    Fayl yaratuvchi AI assistant      ║\n' +
     '  ╚══════════════════════════════════════╝' +
-    C.reset
+    C.reset + '\n'
   )
   console.log(
-    '\n  ' + C.dim + 'Buyruqlar:' + C.reset +
-    '\n  ' + C.cyan + '/papka <yo\'l>' + C.reset + '  — fayllar yaratiladigan papkani o\'zgartirish' +
+    '  ' + C.dim + 'Buyruqlar:' + C.reset +
+    '\n  ' + C.cyan + '/papka <yo\'l>' + C.reset + '  — ishchi papkani o\'zgartirish' +
     '\n  ' + C.cyan + '/qaerda' + C.reset + '       — joriy papkani ko\'rish' +
+    '\n  ' + C.cyan + '/model' + C.reset + '        — provayderr va model ni ko\'rish' +
+    '\n  ' + C.cyan + '/qayta' + C.reset + '        — API kalitni qayta sozlash' +
     '\n  ' + C.cyan + '/tozala' + C.reset + '       — ekranni tozalash' +
-    '\n  ' + C.cyan + '/chiqish' + C.reset + '      — dasturdan chiqish' +
-    '\n'
+    '\n  ' + C.cyan + '/chiqish' + C.reset + '      — dasturdan chiqish\n'
   )
 }
 
 // ── System prompt ─────────────────────────────────
-const SYSTEM = [
-  'Siz Claude Fan-Made CLI yordamchisisiz.',
-  'Foydalanuvchi fayl yaratishni so\'rasa, ALBATTA quyidagi formatdan foydalaning:',
-  '',
-  '```til:fayl/manzili.kengaytma',
-  'kod bu yerda',
-  '```',
-  '',
-  'Misol:',
-  '```typescript:src/components/Button.tsx',
-  'import React from \'react\'',
-  'export const Button = () => <button>Bosing</button>',
-  '```',
-  '',
-  'Har bir fayl uchun to\'liq va ishlaydigan kod yozing.',
-  'O\'zbekcha so\'rasalar o\'zbekcha, ruscha so\'rasalar ruscha javob bering.'
-].join('\n')
+const SYSTEM = `Siz Claude Fan-Made CLI yordamchisisiz. Foydalanuvchi fayl yaratishni so'rasa, ALBATTA quyidagi formatdan foydalaning:
 
-// ── Asosiy dastur ─────────────────────────────────
-function startChat(apiKey, workDir) {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  })
+\`\`\`til:fayl/manzili.kengaytma
+kod bu yerda
+\`\`\`
 
-  // Suhbat tarixi
+Misol:
+\`\`\`typescript:src/components/Button.tsx
+import React from 'react'
+export const Button = () => <button>Bosing</button>
+\`\`\`
+
+Har bir fayl uchun to'liq va ishlaydigan kod yozing. O'zbekcha so'rasalar o'zbekcha javob bering.`
+
+// ── Chat ──────────────────────────────────────────
+function startChat(cfg, workDir) {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
   const history = []
+  const p = PROVIDERS[cfg.provider]
 
-  console.log(C.dim + '📂 Ishchi papka: ' + C.cyan + workDir + C.reset + '\n')
+  console.log(C.dim + '📂 Papka: ' + C.cyan + workDir + C.reset)
+  console.log(C.dim + '🤖 Model: ' + C.magenta + p.model + C.reset + '\n')
 
   function ask() {
     rl.question(C.bold + 'Siz' + C.reset + C.dim + ' › ' + C.reset, function(input) {
       const text = input.trim()
+      if (!text) { ask(); return }
 
-      if (!text) {
-        ask()
-        return
-      }
-
-      // Buyruqlar
       if (text === '/chiqish' || text === '/exit') {
         console.log('\n' + C.cyan + 'Xayr! 👋' + C.reset + '\n')
-        rl.close()
-        process.exit(0)
-        return
+        rl.close(); process.exit(0)
       }
 
-      if (text === '/tozala' || text === '/clear') {
-        console.clear()
-        printBanner()
-        ask()
-        return
+      if (text === '/tozala') {
+        console.clear(); banner()
+        console.log(C.dim + '📂 ' + workDir + C.reset + '\n')
+        ask(); return
       }
 
       if (text === '/qaerda') {
         console.log('\n' + C.cyan + '📂 ' + workDir + C.reset + '\n')
-        ask()
+        ask(); return
+      }
+
+      if (text === '/model') {
+        console.log('\n' + C.magenta + '🤖 ' + p.label + C.reset)
+        console.log(C.dim + '   model: ' + p.model + C.reset + '\n')
+        ask(); return
+      }
+
+      if (text === '/qayta') {
+        rl.close()
+        const rl2 = readline.createInterface({ input: process.stdin, output: process.stdout })
+        runSetup(rl2, function(newCfg) {
+          rl2.close()
+          startChat(newCfg, workDir)
+        })
         return
       }
 
@@ -298,35 +314,27 @@ function startChat(apiKey, workDir) {
         const newDir = path.resolve(text.slice(7).trim())
         if (fs.existsSync(newDir)) {
           workDir = newDir
-          console.log('\n' + C.green + '✓ Papka o\'zgartirildi: ' + C.cyan + workDir + C.reset + '\n')
+          console.log('\n' + C.green + '✓ Papka: ' + C.cyan + workDir + C.reset + '\n')
         } else {
           console.log('\n' + C.red + 'Papka topilmadi: ' + newDir + C.reset + '\n')
         }
-        ask()
-        return
+        ask(); return
       }
 
       // AI ga yuborish
       history.push({ role: 'user', content: text })
-
-      // System + tarix
       const messages = [{ role: 'system', content: SYSTEM }].concat(history)
 
       process.stdout.write('\n' + C.cyan + C.bold + 'Claude' + C.reset + ' ')
 
-      callAPI(messages, apiKey)
+      callAPI(messages, cfg)
         .then(function(response) {
           history.push({ role: 'assistant', content: response })
-
-          // Fayllarni aniqlash va yaratish
-          const files = extractFiles(response)
-          writeFiles(files, workDir)
-
+          writeFiles(extractFiles(response), workDir)
           ask()
         })
         .catch(function(err) {
           console.log('\n' + C.red + 'Xato: ' + err.message + C.reset + '\n')
-          // Oxirgi xabarni tarixdan olib tashlash
           history.pop()
           ask()
         })
@@ -336,29 +344,19 @@ function startChat(apiKey, workDir) {
   ask()
 }
 
-// ── Ishga tushirish ───────────────────────────────
+// ── Main ──────────────────────────────────────────
 function main() {
-  // Ishchi papka: argument berilsa u, aks holda joriy papka
-  const workDir = process.argv[2]
-    ? path.resolve(process.argv[2])
-    : process.cwd()
-
-  printBanner()
+  const workDir = process.argv[2] ? path.resolve(process.argv[2]) : process.cwd()
+  banner()
 
   const cfg = loadConfig()
-
-  if (cfg && cfg.apiKey) {
-    // Config bor — to'g'ridan ishga tushirish
-    startChat(cfg.apiKey, workDir)
+  if (cfg && cfg.apiKey && cfg.provider) {
+    startChat(cfg, workDir)
   } else {
-    // Config yo'q — sozlash
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout
-    })
-    setupConfig(rl, function(apiKey) {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+    runSetup(rl, function(newCfg) {
       rl.close()
-      startChat(apiKey, workDir)
+      startChat(newCfg, workDir)
     })
   }
 }

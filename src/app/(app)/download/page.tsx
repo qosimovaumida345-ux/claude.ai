@@ -117,7 +117,7 @@ export default function DownloadPage() {
 
   const handleCliDownload = () => {
     setCliDownloaded(true)
-    window.open(`${GITHUB}/Claude-FanMade-CLI-v1.0.1.zip`, '_blank')
+    window.open(`${GITHUB}/Claude-FanMade-CLI-v1.0.3.zip`, '_blank')
     setTimeout(() => setCliDownloaded(false), 3000)
   }
 
@@ -748,7 +748,7 @@ export default function DownloadPage() {
 
                 <div className="space-y-3">
                   {[
-                    { step: '1', cmd: 'unzip Claude-FanMade-CLI-v1.0.1.zip', label: 'Arxivni ochin' },
+                    { step: '1', cmd: 'unzip Claude-FanMade-CLI-v1.0.3.zip', label: 'Arxivni ochin' },
                     { step: '2', cmd: 'cd claude-cli', label: 'Papkaga o\'ting' },
                     { step: '3', cmd: 'node claude.js ./loyiham', label: 'Ishga tushiring' },
                   ].map(({ step, cmd, label }) => (

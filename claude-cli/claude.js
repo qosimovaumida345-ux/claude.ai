@@ -42,7 +42,7 @@ function saveConfig(cfg) {
 function callAPI(messages, apiKey) {
   return new Promise((resolve, reject) => {
     const bodyObj = {
-      model: 'llama-3.3-70b',
+      model: 'llama3.3-70b',
       messages: messages,
       stream: true,
       max_tokens: 8192

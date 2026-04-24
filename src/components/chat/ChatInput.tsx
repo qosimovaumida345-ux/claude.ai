@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import TextareaAutosize from 'react-textarea-autosize'
-import { Send, Paperclip, X, FileText, Square } from 'lucide-react'
+import { Send, Paperclip, X, FileText, Square, FolderOpen, HardDrive } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn, formatFileSize } from '@/lib/utils'
 import ModelSelector from './ModelSelector'
+import { isTauri, writeFile, readFile, createDir, listDir, deleteFile } from '@/lib/tauri'
 import type { UploadedFile } from '@/types'
 
 interface Props {
@@ -17,19 +18,155 @@ interface Props {
   disabled?: boolean
 }
 
+// AI javobidan fayl yozish buyrug'ini parse qilish
+function parseAIFileCommand(text: string): { path: string; content: string } | null {
+  // Format: [WRITE_FILE:D:/path/to/file.txt]
+  // Content shundan keyin keladi
+  const match = text.match(/\[WRITE_FILE:([^\]]+)\]\s*([\s\S]+)/i)
+  if (match) return { path: match[1].trim(), content: match[2].trim() }
+  return null
+}
+
 export default function ChatInput({ onSend, onStop, isStreaming, model, onModelChange, disabled }: Props) {
   const [value, setValue] = useState('')
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [uploading, setUploading] = useState(false)
+  const [isDesktop, setIsDesktop] = useState(false)
+  const [tauriStatus, setTauriStatus] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const handleSend = () => {
+  useEffect(() => {
+    setIsDesktop(isTauri())
+  }, [])
+
+  // Xabar yuborishdan oldin fayl buyrug'ini tekshirish
+  const handleSend = async () => {
     const trimmed = value.trim()
     if (!trimmed && files.length === 0) return
+
+    // Desktop da fayl buyrug'larini handle qilish
+    if (isDesktop && trimmed) {
+      const handled = await handleTauriCommand(trimmed)
+      if (handled) {
+        setValue('')
+        return
+      }
+    }
+
     onSend(trimmed, files.length > 0 ? files : undefined)
     setValue('')
     setFiles([])
+  }
+
+  // Tauri fayl buyrug'larini bajarish
+  const handleTauriCommand = async (msg: string): Promise<boolean> => {
+    const lower = msg.toLowerCase()
+
+    // "D:/test.txt yaratgin yoki yoz" + content
+    const writeMatch = msg.match(/^(.+?)\s+(?:fayliga?|ga|ichiga)\s+(.+)$/is)
+      || msg.match(/^(.+?)\s+(?:yozgin|yaratingiz?|create|write)\s*[:\-]?\s*(.+)$/is)
+
+    // Oddiyroq: path + "yaratgin"/"yoz"
+    const simpleWrite = msg.match(/["'`]([^"'`]+)["'`]\s+(?:fayl\s+)?(?:yaratgin|yozgin|create)/i)
+      || msg.match(/([A-Za-z]:[\/\\][^\s]+)\s+(?:fayl\s+)?(?:yaratgin|yozgin|create)/i)
+
+    // O'qish
+    const readMatch = msg.match(/["'`]([^"'`]+)["'`]\s+(?:o['`]qi|ko['`]rsat|ochgin|read)/i)
+      || msg.match(/([A-Za-z]:[\/\\][^\s]+)\s+(?:o['`]qi|ko['`]rsat|ochgin|read)/i)
+
+    // Papka yaratish
+    const dirMatch = msg.match(/["'`]([^"'`]+)["'`]\s+(?:papka|folder)\s+(?:yaratgin|create)/i)
+      || msg.match(/([A-Za-z]:[\/\\][^\s]+)\s+(?:papka|folder)\s+(?:yaratgin|create)/i)
+
+    // Papka ro'yxati
+    const listMatch = msg.match(/["'`]([^"'`]+)["'`]\s+(?:ro['`]yxat|list|nima bor)/i)
+      || msg.match(/([A-Za-z]:[\/\\][^\s]*)\s+(?:da\s+)?(?:nima bor|ro['`]yxat|list)/i)
+
+    // O'chirish
+    const deleteMatch = msg.match(/["'`]([^"'`]+)["'`]\s+(?:o['`]chir|delete|remove)/i)
+      || msg.match(/([A-Za-z]:[\/\\][^\s]+)\s+(?:o['`]chir|delete|remove)/i)
+
+    if (simpleWrite) {
+      const path = simpleWrite[1]
+      try {
+        setTauriStatus('Yaratilmoqda...')
+        const result = await writeFile(path, '// Claude Fan-Made tomonidan yaratildi\n')
+        setTauriStatus(result)
+        onSend(msg)
+        setTimeout(() => setTauriStatus(null), 3000)
+        return true
+      } catch (e: any) {
+        setTauriStatus(`❌ Xato: ${e}`)
+        setTimeout(() => setTauriStatus(null), 4000)
+        return true
+      }
+    }
+
+    if (readMatch) {
+      const path = readMatch[1]
+      try {
+        setTauriStatus('O\'qilmoqda...')
+        const content = await readFile(path)
+        setTauriStatus(null)
+        onSend(`${path} fayli:\n\`\`\`\n${content}\n\`\`\``)
+        return true
+      } catch (e: any) {
+        setTauriStatus(`❌ Xato: ${e}`)
+        setTimeout(() => setTauriStatus(null), 4000)
+        return true
+      }
+    }
+
+    if (dirMatch) {
+      const path = dirMatch[1]
+      try {
+        setTauriStatus('Papka yaratilmoqda...')
+        const result = await createDir(path)
+        setTauriStatus(result)
+        onSend(msg)
+        setTimeout(() => setTauriStatus(null), 3000)
+        return true
+      } catch (e: any) {
+        setTauriStatus(`❌ Xato: ${e}`)
+        setTimeout(() => setTauriStatus(null), 4000)
+        return true
+      }
+    }
+
+    if (listMatch) {
+      const path = listMatch[1]
+      try {
+        setTauriStatus('Ro\'yxat olinmoqda...')
+        const files = await listDir(path)
+        setTauriStatus(null)
+        const list = files.map(f => `- ${f}`).join('\n')
+        onSend(`${path} ichidagi fayllar:\n${list}`)
+        return true
+      } catch (e: any) {
+        setTauriStatus(`❌ Xato: ${e}`)
+        setTimeout(() => setTauriStatus(null), 4000)
+        return true
+      }
+    }
+
+    if (deleteMatch) {
+      const path = deleteMatch[1]
+      try {
+        setTauriStatus('O\'chirilmoqda...')
+        const result = await deleteFile(path)
+        setTauriStatus(result)
+        onSend(msg)
+        setTimeout(() => setTauriStatus(null), 3000)
+        return true
+      } catch (e: any) {
+        setTauriStatus(`❌ Xato: ${e}`)
+        setTimeout(() => setTauriStatus(null), 4000)
+        return true
+      }
+    }
+
+    return false
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -63,6 +200,30 @@ export default function ChatInput({ onSend, onStop, isStreaming, model, onModelC
 
   return (
     <div className="border-t border-gray-100 bg-white px-4 pt-3 pb-4">
+
+      {/* Tauri status xabari */}
+      <AnimatePresence>
+        {tauriStatus && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="mb-2 flex items-center gap-2 text-xs px-3 py-2 rounded-xl bg-[#e0fafb] text-[#00919b] border border-[#00CDD9]/20"
+          >
+            <HardDrive className="w-3.5 h-3.5 shrink-0" />
+            {tauriStatus}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Desktop badge */}
+      {isDesktop && (
+        <div className="mb-2 flex items-center gap-1.5 text-[10px] text-[#00919b]">
+          <HardDrive className="w-3 h-3" />
+          <span>Desktop rejim — disk amallari faol</span>
+        </div>
+      )}
+
       <AnimatePresence>
         {files.length > 0 && (
           <motion.div
@@ -86,10 +247,7 @@ export default function ChatInput({ onSend, onStop, isStreaming, model, onModelC
                     {file.extractedFiles.length} files
                   </span>
                 )}
-                <button
-                  onClick={() => removeFile(file.id)}
-                  className="text-gray-400 hover:text-gray-600 shrink-0"
-                >
+                <button onClick={() => removeFile(file.id)} className="text-gray-400 hover:text-gray-600 shrink-0">
                   <X className="w-3 h-3" />
                 </button>
               </div>
@@ -117,7 +275,10 @@ export default function ChatInput({ onSend, onStop, isStreaming, model, onModelC
           value={value}
           onChange={e => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Message Claude Fan-Made..."
+          placeholder={isDesktop
+            ? 'Xabar yozing yoki: "D:/test.txt yaratgin"'
+            : 'Message Claude Fan-Made...'
+          }
           minRows={1}
           maxRows={8}
           disabled={disabled}
@@ -128,7 +289,6 @@ export default function ChatInput({ onSend, onStop, isStreaming, model, onModelC
           <button
             onClick={onStop}
             className="shrink-0 p-2 rounded-xl bg-gray-200 hover:bg-gray-300 transition-colors"
-            title="Stop generating"
           >
             <Square className="w-3.5 h-3.5 text-gray-600 fill-current" />
           </button>
@@ -150,7 +310,7 @@ export default function ChatInput({ onSend, onStop, isStreaming, model, onModelC
 
       <div className="flex items-center justify-between mt-2.5 px-1">
         <ModelSelector value={model} onChange={onModelChange} disabled={isStreaming} />
-        <p className="text-[11px] text-gray-300">Shift+Enter for new line</p>
+        <p className="text-[11px] text-gray-300">Shift+Enter yangi qator</p>
       </div>
 
       <input

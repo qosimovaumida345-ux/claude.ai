@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schema.tauri.app/capabilities/2",
+  "identifier": "default",
+  "description": "File system access",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "fs:allow-read-text-file",
+    "fs:allow-write-text-file",
+    "fs:allow-create-dir",
+    "fs:allow-read-dir",
+    "fs:allow-exists",
+    "fs:allow-remove-file",
+    "dialog:allow-open",
+    "dialog:allow-save"
+  ]
+}

@@ -19,7 +19,15 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "dangerousRemoteDomainIpcAccess": [
+        {
+          "domain": "claude-ai-8iev.onrender.com",
+          "windows": ["main"],
+          "plugins": [],
+          "enableTauriApi": true
+        }
+      ]
     }
   },
   "bundle": {

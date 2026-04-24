@@ -6,7 +6,6 @@ use tauri::command;
 
 #[command]
 fn write_file(path: String, content: String) -> Result<String, String> {
-    // Papkani yaratish (agar yo'q bo'lsa)
     if let Some(parent) = Path::new(&path).parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
@@ -20,7 +19,7 @@ fn read_file(path: String) -> Result<String, String> {
 }
 
 #[command]
-fn create_dir(path: String) -> Result<String, String> {
+fn make_dir(path: String) -> Result<String, String> {
     fs::create_dir_all(&path).map_err(|e| e.to_string())?;
     Ok(format!("📁 Papka yaratildi: {}", path))
 }
@@ -53,7 +52,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             write_file,
             read_file,
-            create_dir,
+            make_dir,
             list_dir,
             delete_file,
             file_exists

@@ -8,11 +8,15 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "fs:default",
     "fs:allow-read-text-file",
     "fs:allow-write-text-file",
-    "fs:allow-create-dir",
+    "fs:allow-mkdir",
     "fs:allow-read-dir",
     "fs:allow-exists",
-    "fs:allow-remove-file"
+    "fs:allow-remove",
+    "fs:allow-write-file",
+    "fs:allow-read-file",
+    "fs:allow-create"
   ]
 }

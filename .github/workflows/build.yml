@@ -84,6 +84,9 @@ jobs:
 
       - uses: android-actions/setup-android@v3
 
+      - name: Install Android SDK 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
       - run: npm install
 
       - run: |
@@ -96,12 +99,18 @@ jobs:
 
       - run: npx cap sync android
 
+      - name: Set compileSdk and targetSdk to 35
+        run: |
+          sed -i 's/compileSdk = [0-9]*/compileSdk = 35/g' android/app/build.gradle
+          sed -i 's/targetSdk = [0-9]*/targetSdk = 35/g' android/app/build.gradle
+          sed -i 's/compileSdkVersion [0-9]*/compileSdkVersion 35/g' android/app/build.gradle
+          sed -i 's/targetSdkVersion [0-9]*/targetSdkVersion 35/g' android/app/build.gradle
+          echo "--- android/app/build.gradle ---"
+          cat android/app/build.gradle
+
       - name: Upgrade Gradle to 8.7
         run: |
-          cd android
-          # gradle-wrapper.properties ichidagi versiyani 8.7 ga yangilaymiz
-          sed -i 's|gradle-[0-9.]*-all.zip|gradle-8.7-all.zip|g' gradle/wrapper/gradle-wrapper.properties
-          cat gradle/wrapper/gradle-wrapper.properties
+          sed -i 's|gradle-[0-9.]*-all.zip|gradle-8.7-all.zip|g' android/gradle/wrapper/gradle-wrapper.properties
 
       - name: Build APK
         run: |

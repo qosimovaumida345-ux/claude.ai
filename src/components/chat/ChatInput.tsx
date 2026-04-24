@@ -64,8 +64,8 @@ export default function ChatInput({ onSend, onStop, isStreaming, model, onModelC
     const lower = msg.toLowerCase()
 
     // "D:/test.txt yaratgin yoki yoz" + content
-    const writeMatch = msg.match(/^(.+?)\s+(?:fayliga?|ga|ichiga)\s+(.+)$/is)
-      || msg.match(/^(.+?)\s+(?:yozgin|yaratingiz?|create|write)\s*[:\-]?\s*(.+)$/is)
+    const writeMatch = msg.match(/^(.+?)\s+(?:fayliga?|ga|ichiga)\s+(.+)$/i)
+      || msg.match(/^(.+?)\s+(?:yozgin|yaratingiz?|create|write)\s*[:\-]?\s*(.+)$/i)
 
     // Oddiyroq: path + "yaratgin"/"yoz"
     const simpleWrite = msg.match(/["'`]([^"'`]+)["'`]\s+(?:fayl\s+)?(?:yaratgin|yozgin|create)/i)

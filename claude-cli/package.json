@@ -1,0 +1,18 @@
+{
+  "name": "claude-fan-made-cli",
+  "version": "1.0.0",
+  "description": "Claude Fan-Made - Terminal AI assistant (fayl yaratuvchi)",
+  "main": "claude.js",
+  "bin": {
+    "claude": "./claude.js"
+  },
+  "scripts": {
+    "start": "node claude.js"
+  },
+  "keywords": ["claude", "ai", "cli", "terminal"],
+  "author": "Claude Fan-Made",
+  "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

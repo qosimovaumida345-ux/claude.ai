@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Monitor, Apple, Terminal, Smartphone, Download, ChevronRight, Zap, Shield, Wifi, Star } from 'lucide-react'
+import { Monitor, Apple, Terminal, Smartphone, Download, ChevronRight, Zap, Shield, Wifi, Star, Code2, FolderOpen, Cpu } from 'lucide-react'
 import Image from 'next/image'
 
 const GITHUB = 'https://github.com/qosimovaumida345-ux/claude.ai/releases/latest/download'
@@ -71,13 +71,37 @@ const STATS = [
   { value: '50K+', label: "Foydalanuvchi" },
   { value: '4.9', label: "Reyting", icon: Star },
   { value: '99.9%', label: "Uptime" },
-  { value: '4', label: "Platforma" },
+  { value: '5', label: "Platforma" },
 ]
+
+const CLI_FEATURES = [
+  { icon: FolderOpen, text: 'Fayllarni avtomatik yaratadi', color: '#00CDD9' },
+  { icon: Code2,      text: 'Har qanday loyiha bilan ishlaydi', color: '#a78bfa' },
+  { icon: Cpu,        text: 'Node.js orqali ishlaydi', color: '#34d399' },
+]
+
+const CLI_DEMO = `$ node claude.js ./mening-loyiham
+
+  ╔═══════════════════════════════════╗
+  ║   Claude Fan-Made CLI  v1.0.0    ║
+  ╚═══════════════════════════════════╝
+
+📂 Ishchi katalog: ./mening-loyiham
+
+Siz › React login formasi yarat src/Login.tsx ga
+
+Claude  Albatta! Login komponenti yaratyapman...
+
+📁 Fayllar topildi:
+  ✓ src/Login.tsx  (42 qator)
+  ✓ src/Login.css  (28 qator)`
 
 export default function DownloadPage() {
   const [hovered, setHovered] = useState<string | null>(null)
   const [downloaded, setDownloaded] = useState<string | null>(null)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+  const [cliDownloaded, setCliDownloaded] = useState(false)
+  const [activeTab, setActiveTab] = useState<'app' | 'cli'>('app')
 
   useEffect(() => {
     const handler = (e: MouseEvent) => setMousePos({ x: e.clientX, y: e.clientY })
@@ -89,6 +113,12 @@ export default function DownloadPage() {
     setDownloaded(platform.id)
     window.open(`${GITHUB}/${platform.file}`, '_blank')
     setTimeout(() => setDownloaded(null), 3000)
+  }
+
+  const handleCliDownload = () => {
+    setCliDownloaded(true)
+    window.open(`${GITHUB}/Claude-FanMade-CLI-v1.0.1.zip`, '_blank')
+    setTimeout(() => setCliDownloaded(false), 3000)
   }
 
   return (
@@ -206,7 +236,7 @@ export default function DownloadPage() {
         </motion.nav>
 
         {/* HERO */}
-        <div className="text-center mb-20">
+        <div className="text-center mb-16">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -283,245 +313,495 @@ export default function DownloadPage() {
           </motion.div>
         </div>
 
-        {/* PLATFORM CARDS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12">
-          {PLATFORMS.map((platform, i) => {
-            const Icon = platform.icon
-            const isHovered = hovered === platform.id
-            const isDone = downloaded === platform.id
-
-            return (
-              <motion.div
-                key={platform.id}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 + i * 0.08 }}
-                onMouseEnter={() => setHovered(platform.id)}
-                onMouseLeave={() => setHovered(null)}
-                onClick={() => handleDownload(platform)}
-                className="relative cursor-pointer"
-                whileHover={{ y: -4 }}
-                whileTap={{ scale: 0.98 }}
+        {/* TAB SWITCHER */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="flex justify-center mb-10"
+        >
+          <div
+            className="flex rounded-2xl p-1 gap-1"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            {[
+              { id: 'app', label: '📱 Ilova', desc: 'Desktop / Mobile' },
+              { id: 'cli', label: '⌨️ CLI', desc: 'Terminal · Fayl yaratadi' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as 'app' | 'cli')}
+                className="flex flex-col items-center px-8 py-3 rounded-xl transition-all duration-300 cursor-pointer"
+                style={{
+                  background: activeTab === tab.id ? 'rgba(0,205,217,0.1)' : 'transparent',
+                  border: activeTab === tab.id ? '1px solid rgba(0,205,217,0.3)' : '1px solid transparent',
+                  color: activeTab === tab.id ? '#00CDD9' : 'rgba(255,255,255,0.35)',
+                }}
               >
-                {/* Glow behind card */}
-                <AnimatePresence>
-                  {isHovered && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="absolute inset-0 rounded-2xl -z-10"
-                      style={{
-                        background: `radial-gradient(ellipse at 50% 0%, rgba(${platform.glow},0.15), transparent 70%)`,
-                        filter: 'blur(20px)',
-                        transform: 'translateY(8px) scale(1.02)',
-                      }}
-                    />
-                  )}
-                </AnimatePresence>
+                <span className="text-sm font-semibold">{tab.label}</span>
+                <span className="text-[11px] mt-0.5" style={{ opacity: 0.7 }}>{tab.desc}</span>
+              </button>
+            ))}
+          </div>
+        </motion.div>
 
-                <div
-                  className="relative rounded-2xl p-6 transition-all duration-300 overflow-hidden"
+        <AnimatePresence mode="wait">
+          {activeTab === 'app' ? (
+            <motion.div
+              key="app"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.35 }}
+            >
+              {/* PLATFORM CARDS */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12">
+                {PLATFORMS.map((platform, i) => {
+                  const Icon = platform.icon
+                  const isHovered = hovered === platform.id
+                  const isDone = downloaded === platform.id
+
+                  return (
+                    <motion.div
+                      key={platform.id}
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: 0.1 + i * 0.08 }}
+                      onMouseEnter={() => setHovered(platform.id)}
+                      onMouseLeave={() => setHovered(null)}
+                      onClick={() => handleDownload(platform)}
+                      className="relative cursor-pointer"
+                      whileHover={{ y: -4 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <AnimatePresence>
+                        {isHovered && (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 rounded-2xl -z-10"
+                            style={{
+                              background: `radial-gradient(ellipse at 50% 0%, rgba(${platform.glow},0.15), transparent 70%)`,
+                              filter: 'blur(20px)',
+                              transform: 'translateY(8px) scale(1.02)',
+                            }}
+                          />
+                        )}
+                      </AnimatePresence>
+
+                      <div
+                        className="relative rounded-2xl p-6 transition-all duration-300 overflow-hidden"
+                        style={{
+                          background: isHovered
+                            ? `rgba(${platform.glow},0.05)`
+                            : 'rgba(255,255,255,0.02)',
+                          border: `1px solid ${isHovered
+                            ? `rgba(${platform.glow},0.4)`
+                            : 'rgba(255,255,255,0.06)'}`,
+                        }}
+                      >
+                        <motion.div
+                          className="absolute top-0 left-8 right-8 h-[1px]"
+                          style={{
+                            background: `linear-gradient(90deg, transparent, rgba(${platform.glow},0.6), transparent)`,
+                            opacity: isHovered ? 1 : 0,
+                            transition: 'opacity 0.3s',
+                          }}
+                        />
+
+                        {platform.badge && (
+                          <div
+                            className="absolute top-4 right-4 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-widest"
+                            style={{
+                              background: `rgba(${platform.glow},0.12)`,
+                              color: platform.color,
+                              border: `1px solid rgba(${platform.glow},0.3)`,
+                            }}
+                          >
+                            {platform.badge}
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-4">
+                          <div
+                            className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300"
+                            style={{
+                              background: isHovered
+                                ? `rgba(${platform.glow},0.12)`
+                                : 'rgba(255,255,255,0.04)',
+                              border: `1px solid ${isHovered
+                                ? `rgba(${platform.glow},0.35)`
+                                : 'rgba(255,255,255,0.08)'}`,
+                            }}
+                          >
+                            <Icon
+                              className="w-6 h-6 transition-all duration-300"
+                              style={{ color: isHovered ? platform.color : 'rgba(255,255,255,0.3)' }}
+                            />
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline gap-2">
+                              <h3
+                                className="text-base font-semibold transition-colors duration-300"
+                                style={{ color: isHovered ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.75)' }}
+                              >
+                                {platform.name}
+                              </h3>
+                              <span
+                                className="text-xs font-mono px-1.5 py-0.5 rounded"
+                                style={{
+                                  background: `rgba(${platform.glow},0.1)`,
+                                  color: platform.color,
+                                }}
+                              >
+                                {platform.ext}
+                              </span>
+                            </div>
+                            <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                              {platform.sub}
+                            </p>
+                            <p className="text-xs mt-1 flex items-center gap-2" style={{ color: 'rgba(255,255,255,0.2)' }}>
+                              <span>{platform.desc}</span>
+                              <span>·</span>
+                              <span>{platform.size}</span>
+                            </p>
+                          </div>
+
+                          <motion.div
+                            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300"
+                            style={{
+                              background: isDone
+                                ? 'rgba(0,205,217,0.15)'
+                                : isHovered
+                                ? `rgba(${platform.glow},0.15)`
+                                : 'rgba(255,255,255,0.04)',
+                              border: `1px solid ${isDone
+                                ? 'rgba(0,205,217,0.5)'
+                                : isHovered
+                                ? `rgba(${platform.glow},0.4)`
+                                : 'rgba(255,255,255,0.08)'}`,
+                            }}
+                          >
+                            <AnimatePresence mode="wait">
+                              {isDone ? (
+                                <motion.span
+                                  key="check"
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: 1 }}
+                                  exit={{ scale: 0 }}
+                                  className="text-sm"
+                                  style={{ color: '#00CDD9' }}
+                                >
+                                  ✓
+                                </motion.span>
+                              ) : (
+                                <motion.div key="arrow">
+                                  <ChevronRight
+                                    className="w-4 h-4 transition-all duration-300"
+                                    style={{ color: isHovered ? platform.color : 'rgba(255,255,255,0.2)' }}
+                                  />
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </motion.div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )
+                })}
+              </div>
+
+              {/* FEATURES ROW */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.55 }}
+                className="flex items-center justify-center gap-8 mb-16 flex-wrap"
+              >
+                {[
+                  { icon: Zap, text: 'Tezkor javoblar' },
+                  { icon: Shield, text: 'Xavfsiz va mahalliy' },
+                  { icon: Wifi, text: 'Oflayn rejim' },
+                ].map(({ icon: Icon, text }) => (
+                  <div
+                    key={text}
+                    className="flex items-center gap-2 text-sm"
+                    style={{ color: 'rgba(255,255,255,0.3)' }}
+                  >
+                    <Icon className="w-4 h-4" style={{ color: '#00CDD9' }} />
+                    {text}
+                  </div>
+                ))}
+              </motion.div>
+
+              {/* CTA */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.65 }}
+                className="text-center"
+              >
+                <motion.button
+                  onClick={() => handleDownload(PLATFORMS[0])}
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="relative inline-flex items-center gap-3 px-10 py-4 rounded-2xl font-semibold text-white text-base overflow-hidden cursor-pointer"
                   style={{
-                    background: isHovered
-                      ? `rgba(${platform.glow},0.05)`
-                      : 'rgba(255,255,255,0.02)',
-                    border: `1px solid ${isHovered
-                      ? `rgba(${platform.glow},0.4)`
-                      : 'rgba(255,255,255,0.06)'}`,
+                    background: 'linear-gradient(135deg, #00CDD9 0%, #0096c7 100%)',
+                    boxShadow: '0 0 60px rgba(0,205,217,0.25), 0 0 0 1px rgba(0,205,217,0.3)',
                   }}
                 >
-                  {/* Top line accent */}
-                  <motion.div
-                    className="absolute top-0 left-8 right-8 h-[1px]"
+                  <div
+                    className="absolute inset-0 opacity-30"
                     style={{
-                      background: `linear-gradient(90deg, transparent, rgba(${platform.glow},0.6), transparent)`,
-                      opacity: isHovered ? 1 : 0,
-                      transition: 'opacity 0.3s',
+                      background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.4) 50%, transparent 60%)',
+                      animation: 'shine 3s infinite',
                     }}
                   />
+                  <Download className="w-5 h-5 relative z-10" />
+                  <span className="relative z-10">Windows uchun yuklab olish</span>
+                  <span className="relative z-10 font-mono text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                    {VERSION}
+                  </span>
+                </motion.button>
 
-                  {/* Badge */}
-                  {platform.badge && (
-                    <div
-                      className="absolute top-4 right-4 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-widest"
-                      style={{
-                        background: `rgba(${platform.glow},0.12)`,
-                        color: platform.color,
-                        border: `1px solid rgba(${platform.glow},0.3)`,
-                      }}
+                <p className="mt-5 text-sm" style={{ color: 'rgba(255,255,255,0.2)' }}>
+                  Barcha versiyalar uchun{' '}
+                  <a
+                    href="https://github.com/qosimovaumida345-ux/claude.ai/releases"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-4 transition-colors duration-200"
+                    style={{ color: 'rgba(0,205,217,0.5)' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = '#00CDD9')}
+                    onMouseLeave={e => (e.currentTarget.style.color = 'rgba(0,205,217,0.5)')}
+                  >
+                    GitHub Releases
+                  </a>{' '}
+                  sahifasini ko'ring
+                </p>
+              </motion.div>
+            </motion.div>
+          ) : (
+            /* ═══════════════ CLI TAB ═══════════════ */
+            <motion.div
+              key="cli"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.35 }}
+            >
+              {/* CLI Hero card */}
+              <div
+                className="rounded-3xl overflow-hidden mb-8"
+                style={{
+                  background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid rgba(0,205,217,0.15)',
+                }}
+              >
+                {/* Terminal demo */}
+                <div
+                  className="rounded-t-3xl overflow-hidden"
+                  style={{ background: '#0D1117', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+                >
+                  {/* Window bar */}
+                  <div
+                    className="flex items-center gap-2 px-4 py-3"
+                    style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
+                  >
+                    <div className="w-3 h-3 rounded-full" style={{ background: '#ff5f57' }} />
+                    <div className="w-3 h-3 rounded-full" style={{ background: '#febc2e' }} />
+                    <div className="w-3 h-3 rounded-full" style={{ background: '#28c840' }} />
+                    <span
+                      className="ml-3 text-xs font-mono"
+                      style={{ color: 'rgba(255,255,255,0.3)' }}
                     >
-                      {platform.badge}
-                    </div>
-                  )}
+                      Terminal — claude-cli
+                    </span>
+                  </div>
 
-                  <div className="flex items-center gap-4">
-                    {/* Icon box */}
-                    <div
-                      className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300"
-                      style={{
-                        background: isHovered
-                          ? `rgba(${platform.glow},0.12)`
-                          : 'rgba(255,255,255,0.04)',
-                        border: `1px solid ${isHovered
-                          ? `rgba(${platform.glow},0.35)`
-                          : 'rgba(255,255,255,0.08)'}`,
-                      }}
-                    >
-                      <Icon
-                        className="w-6 h-6 transition-all duration-300"
-                        style={{ color: isHovered ? platform.color : 'rgba(255,255,255,0.3)' }}
-                      />
-                    </div>
+                  {/* Demo content */}
+                  <pre
+                    className="p-6 text-sm font-mono leading-relaxed overflow-x-auto"
+                    style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.78rem' }}
+                  >
+                    {CLI_DEMO.split('\n').map((line, i) => {
+                      let color = 'rgba(255,255,255,0.6)'
+                      if (line.includes('✓')) color = '#34d399'
+                      else if (line.includes('Siz ›')) color = '#38bdf8'
+                      else if (line.includes('Claude ')) color = '#00CDD9'
+                      else if (line.includes('📁') || line.includes('📂')) color = '#a78bfa'
+                      else if (line.includes('╔') || line.includes('║') || line.includes('╚')) color = 'rgba(0,205,217,0.7)'
+                      else if (line.startsWith('$')) color = '#34d399'
 
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline gap-2">
-                        <h3
-                          className="text-base font-semibold transition-colors duration-300"
-                          style={{ color: isHovered ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.75)' }}
-                        >
-                          {platform.name}
-                        </h3>
-                        <span
-                          className="text-xs font-mono px-1.5 py-0.5 rounded"
-                          style={{
-                            background: `rgba(${platform.glow},0.1)`,
-                            color: platform.color,
-                          }}
-                        >
-                          {platform.ext}
+                      return (
+                        <span key={i} style={{ display: 'block', color }}>
+                          {line || '\u00A0'}
                         </span>
+                      )
+                    })}
+                  </pre>
+                </div>
+
+                {/* CLI info */}
+                <div className="p-8">
+                  <div className="flex items-start justify-between flex-wrap gap-6">
+                    <div>
+                      <div className="flex items-center gap-3 mb-3">
+                        <div
+                          className="w-10 h-10 rounded-xl flex items-center justify-center"
+                          style={{ background: 'rgba(0,205,217,0.1)', border: '1px solid rgba(0,205,217,0.2)' }}
+                        >
+                          <Terminal className="w-5 h-5" style={{ color: '#00CDD9' }} />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-lg" style={{ color: 'rgba(255,255,255,0.9)' }}>
+                            Claude CLI
+                          </h3>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span
+                              className="text-xs font-mono px-2 py-0.5 rounded"
+                              style={{ background: 'rgba(0,205,217,0.1)', color: '#00CDD9' }}
+                            >
+                              v1.0.0
+                            </span>
+                            <span className="text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>
+                              Node.js · ~6 KB · Bepul
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                        {platform.sub}
+
+                      <p className="text-sm leading-relaxed max-w-md" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                        Terminal orqali AI bilan suhbatlashing va so'ragan fayllaringiz{' '}
+                        <span style={{ color: 'rgba(0,205,217,0.8)' }}>avtomatik yaratiladi</span>.
+                        Node.js o'rnatilgan bo'lsa, tayyor!
                       </p>
-                      <p className="text-xs mt-1 flex items-center gap-2" style={{ color: 'rgba(255,255,255,0.2)' }}>
-                        <span>{platform.desc}</span>
-                        <span>·</span>
-                        <span>{platform.size}</span>
-                      </p>
+
+                      <div className="flex flex-wrap gap-3 mt-5">
+                        {CLI_FEATURES.map(({ icon: Icon, text, color }) => (
+                          <div
+                            key={text}
+                            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm"
+                            style={{
+                              background: 'rgba(255,255,255,0.03)',
+                              border: '1px solid rgba(255,255,255,0.07)',
+                              color: 'rgba(255,255,255,0.5)',
+                            }}
+                          >
+                            <Icon className="w-3.5 h-3.5" style={{ color }} />
+                            {text}
+                          </div>
+                        ))}
+                      </div>
                     </div>
 
-                    {/* CTA arrow */}
-                    <motion.div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300"
+                    {/* Download button */}
+                    <motion.button
+                      onClick={handleCliDownload}
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.97 }}
+                      className="relative flex items-center gap-3 px-7 py-3.5 rounded-2xl font-semibold text-sm overflow-hidden cursor-pointer shrink-0"
                       style={{
-                        background: isDone
-                          ? 'rgba(0,205,217,0.15)'
-                          : isHovered
-                          ? `rgba(${platform.glow},0.15)`
-                          : 'rgba(255,255,255,0.04)',
-                        border: `1px solid ${isDone
-                          ? 'rgba(0,205,217,0.5)'
-                          : isHovered
-                          ? `rgba(${platform.glow},0.4)`
-                          : 'rgba(255,255,255,0.08)'}`,
+                        background: cliDownloaded
+                          ? 'rgba(52,211,153,0.15)'
+                          : 'rgba(0,205,217,0.1)',
+                        border: `1px solid ${cliDownloaded ? 'rgba(52,211,153,0.4)' : 'rgba(0,205,217,0.3)'}`,
+                        color: cliDownloaded ? '#34d399' : '#00CDD9',
                       }}
                     >
                       <AnimatePresence mode="wait">
-                        {isDone ? (
+                        {cliDownloaded ? (
                           <motion.span
-                            key="check"
+                            key="done"
                             initial={{ scale: 0 }}
                             animate={{ scale: 1 }}
-                            exit={{ scale: 0 }}
-                            className="text-sm"
-                            style={{ color: '#00CDD9' }}
+                            className="flex items-center gap-2"
                           >
-                            ✓
+                            ✓ Yuklab olindi
                           </motion.span>
                         ) : (
-                          <motion.div key="arrow">
-                            <ChevronRight
-                              className="w-4 h-4 transition-all duration-300"
-                              style={{ color: isHovered ? platform.color : 'rgba(255,255,255,0.2)' }}
-                            />
-                          </motion.div>
+                          <motion.span key="dl" className="flex items-center gap-2">
+                            <Download className="w-4 h-4" />
+                            ZIP yuklab olish
+                          </motion.span>
                         )}
                       </AnimatePresence>
-                    </motion.div>
+                    </motion.button>
                   </div>
                 </div>
-              </motion.div>
-            )
-          })}
-        </div>
+              </div>
 
-        {/* FEATURES ROW */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.55 }}
-          className="flex items-center justify-center gap-8 mb-16 flex-wrap"
-        >
-          {[
-            { icon: Zap, text: 'Tezkor javoblar' },
-            { icon: Shield, text: 'Xavfsiz va mahalliy' },
-            { icon: Wifi, text: 'Oflayn rejim' },
-          ].map(({ icon: Icon, text }) => (
-            <div
-              key={text}
-              className="flex items-center gap-2 text-sm"
-              style={{ color: 'rgba(255,255,255,0.3)' }}
-            >
-              <Icon className="w-4 h-4" style={{ color: '#00CDD9' }} />
-              {text}
-            </div>
-          ))}
-        </motion.div>
+              {/* Install steps */}
+              <div
+                className="rounded-2xl p-6 mb-8"
+                style={{
+                  background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                }}
+              >
+                <h4 className="text-sm font-semibold mb-4" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                  O'rnatish (3 qadam)
+                </h4>
 
-        {/* CTA BUTTON */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.65 }}
-          className="text-center"
-        >
-          <motion.button
-            onClick={() => handleDownload(PLATFORMS[0])}
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.97 }}
-            className="relative inline-flex items-center gap-3 px-10 py-4 rounded-2xl font-semibold text-white text-base overflow-hidden"
-            style={{
-              background: 'linear-gradient(135deg, #00CDD9 0%, #0096c7 100%)',
-              boxShadow: '0 0 60px rgba(0,205,217,0.25), 0 0 0 1px rgba(0,205,217,0.3)',
-            }}
-          >
-            {/* Shine */}
-            <div
-              className="absolute inset-0 opacity-30"
-              style={{
-                background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.4) 50%, transparent 60%)',
-                animation: 'shine 3s infinite',
-              }}
-            />
-            <Download className="w-5 h-5 relative z-10" />
-            <span className="relative z-10">Windows uchun yuklab olish</span>
-            <span
-              className="relative z-10 font-mono text-sm"
-              style={{ color: 'rgba(255,255,255,0.6)' }}
-            >
-              {VERSION}
-            </span>
-          </motion.button>
+                <div className="space-y-3">
+                  {[
+                    { step: '1', cmd: 'unzip Claude-FanMade-CLI-v1.0.1.zip', label: 'Arxivni ochin' },
+                    { step: '2', cmd: 'cd claude-cli', label: 'Papkaga o\'ting' },
+                    { step: '3', cmd: 'node claude.js ./loyiham', label: 'Ishga tushiring' },
+                  ].map(({ step, cmd, label }) => (
+                    <div key={step} className="flex items-center gap-4">
+                      <div
+                        className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold"
+                        style={{ background: 'rgba(0,205,217,0.1)', color: '#00CDD9', border: '1px solid rgba(0,205,217,0.2)' }}
+                      >
+                        {step}
+                      </div>
+                      <div className="flex-1">
+                        <div
+                          className="font-mono text-sm px-3 py-1.5 rounded-lg"
+                          style={{ background: 'rgba(0,0,0,0.3)', color: '#34d399' }}
+                        >
+                          $ {cmd}
+                        </div>
+                      </div>
+                      <span className="text-xs shrink-0" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                        {label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
 
-          <p className="mt-5 text-sm" style={{ color: 'rgba(255,255,255,0.2)' }}>
-            Barcha versiyalar uchun{' '}
-            <a
-              href="https://github.com/qosimovaumida345-ux/claude.ai/releases"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-4 transition-colors duration-200"
-              style={{ color: 'rgba(0,205,217,0.5)' }}
-              onMouseEnter={e => (e.currentTarget.style.color = '#00CDD9')}
-              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(0,205,217,0.5)')}
-            >
-              GitHub Releases
-            </a>{' '}
-            sahifasini ko'ring
-          </p>
-        </motion.div>
+                <div
+                  className="mt-4 p-3 rounded-xl text-xs"
+                  style={{ background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.15)', color: 'rgba(167,139,250,0.7)' }}
+                >
+                  💡 <strong>Talab:</strong> Node.js v16+ o'rnatilgan bo'lishi kerak. Birinchi ishga tushirilganda Cerebras API kalit so'raladi.
+                </div>
+              </div>
+
+              {/* Supported systems */}
+              <div className="flex items-center justify-center gap-6 flex-wrap">
+                {[
+                  { icon: Terminal, name: 'Linux', color: '#fb923c' },
+                  { icon: Monitor, name: 'Windows', color: '#38bdf8' },
+                  { icon: Apple, name: 'macOS', color: '#a78bfa' },
+                ].map(({ icon: Icon, name, color }) => (
+                  <div
+                    key={name}
+                    className="flex items-center gap-2 text-sm"
+                    style={{ color: 'rgba(255,255,255,0.3)' }}
+                  >
+                    <Icon className="w-4 h-4" style={{ color }} />
+                    {name}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Footer */}
         <motion.div

@@ -99,19 +99,38 @@ jobs:
 
       - run: npx cap sync android
 
-      - name: Fix variables.gradle — compileSdk 35
+      - name: Fix Android project
         run: |
-          echo "--- BEFORE ---"
-          cat android/variables.gradle
+          # 1. compileSdk 35
           sed -i "s/compileSdkVersion = [0-9]*/compileSdkVersion = 35/" android/variables.gradle
           sed -i "s/targetSdkVersion = [0-9]*/targetSdkVersion = 35/" android/variables.gradle
-          echo "--- AFTER ---"
-          cat android/variables.gradle
 
-      - name: Upgrade Gradle wrapper to 8.7
-        run: |
+          # 2. Gradle 8.7
           sed -i 's|gradle-[0-9.]*-all.zip|gradle-8.7-all.zip|g' android/gradle/wrapper/gradle-wrapper.properties
-          cat android/gradle/wrapper/gradle-wrapper.properties
+
+          # 3. Kotlin stdlib conflict fix + suppress warning
+          cat >> android/gradle.properties << 'EOF'
+          android.suppressUnsupportedCompileSdk=35
+          EOF
+
+          # 4. Kotlin resolution strategy - build.gradle ga qo'shamiz
+          cat >> android/build.gradle << 'EOF'
+
+          subprojects {
+              configurations.all {
+                  resolutionStrategy {
+                      force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.22'
+                      force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'
+                      force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
+                  }
+              }
+          }
+          EOF
+
+          echo "=== variables.gradle ==="
+          cat android/variables.gradle
+          echo "=== gradle.properties ==="
+          cat android/gradle.properties
 
       - name: Build APK
         run: |
